@@ -1,0 +1,19 @@
+{
+  "one_time": true,
+  "buttons": [
+    [{
+      "action": {
+        "type": "text",
+        "label": "Первая(на Студенческой)"
+      },
+      "color": "positive"
+    },
+	{
+      "action": {
+        "type": "text",
+        "label": "Назад"
+      },
+      "color": "positive"
+    }]
+  ]
+}

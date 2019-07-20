@@ -1,307 +1,142 @@
 import json
-import os
+import LogManager,config
 import random
+from datetime import datetime
+import psycopg2
+
+from threading import Thread
+
+#Все для вк! Моря и ААААКеаны, все для вк!! ДЛЯЯЯ ВВВВВКККККК (Все библеотеки для вк)
+import vk_api
+
+
 
 class Messg:
     from vk_api.longpoll import VkEventType
-    def __init__(self, longpoll, c, vk,vk_api, parser,conn):
-        self.longpoll = longpoll
-        self.c = c
-        self.vk = vk
-        self.vk_api = vk_api
-        self.parser = parser
-        self.conn = conn
+    from vk_api.bot_longpoll import VkBotEventType
+    def __init__(self):
+        self.vk_session = vk_api.VkApi(token=config.vk_token)
+        from vk_api.longpoll import VkLongPoll
+        from vk_api.bot_longpoll import VkBotLongPoll
+        self.longpoll = VkLongPoll(self.vk_session)
+        self.vk = self.vk_session.get_api()
+        self.blongpoll = VkBotLongPoll(vk=self.vk_session, group_id=config.group_id, wait=25)
+        self.conn = psycopg2.connect(
+            host=config.host,
+            database=config.database,
+            user=config.user,
+            password=config.password
+        )
+        self.c = self.conn.cursor()
+        self.keyBoardList = ["json/cancel.json","json/commands.json","json/isTeacher.json","json/menu.json","json/plate.json"]
+
+
+
 
     Random = 0
+    rand_phrases = ['Всегда пожалуйста', 'Вот ваше расписание', 'Машины скоро захва... то есть вот ваше расписание', 'Бот к вашим услугам :)', 'Не благодарите, просто напишите спасибо))']
 
     def random_id(self):
         self.Random
         self.Random += random.randint(0, 1000000000000000)
         return self.Random
 
-    def sendIfRegistered(self, mainEvent, class_, parameter, record):
-        self.parser.single(mainEvent.user_id, class_, parameter.lower(),record)
+    def checkMessage(self, msge:str, peerid):
+        self.addNewUser(peerid)
+        msgeLower = msge.lower()
+        if msgeLower == 'привет':
+            msg = 'Привет! Напиши мне "Расписание!"'
+            self.SendMessage(peerid, msg, 3)
+            LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Отправка сообщения пользователю %s(%d): "Привет"' % (self.GetName(peerid, 'nom'), peerid))
 
-    def checkMessage(self, event):
-        print(event.user_id)
-        self.curid = event.user_id
-        """c.execute('SELECT id FROM users WHERE id=?', (event.user_id,))
-        matching = c.fetchone()
-        if matching == None:
-            addNewUser(event)"""
-
-        self.msg = event.text.lower()
-        if self.msg == 'привет':
-            self.addNewUser(event)
-            if event.from_user:
-                self.vk.messages.send(
-                    user_id=event.user_id,
-                    message='Привет, напиши слово Расписание',
-                    keyboard=open("json/menu.json", "r", encoding="UTF-8").read(),
-                    random_id=self.random_id()
-                )
-
-        elif self.msg == 'расписание':
-            self.addNewUser(event)
-            self.c.execute('SELECT id FROM subscriptions_playground_1 WHERE id=%d' % (self.curid,))
-            matching = self.c.fetchone()
-            print('Запрос на расписание ', matching)
-            if matching is None:
-                self.vk.messages.send(
-                    user_id=event.user_id,
-                    message='Вы не зарегистрированы, напишите команду "Регистрация"',
-                    keyboard=open("json/menu.json", "r", encoding="UTF-8").read(),
-                    random_id = self.random_id()
-                )
+        elif msgeLower == "регистрация":
+            if(self.GetUserState(peerid) != ""):
+                msg = "Вы уже проходите регистрацию"
+                state = self.GetUserState(peerid)
+                keyboardInt = 0
+                if(state == "setplate"):
+                    keyboardInt = 4
+                elif(state == "setclass"):
+                    keyboardInt = 2
+                elif(state == "setParameter"):
+                    keyboardInt = 0
+                self.SendMessage(peerid, msg, keyboardInt)
             else:
-                self.vk.messages.send(
-                    user_id=event.user_id,
-                    message='Расписание',
-                    keyboard=open("json/menu.json", "r", encoding="UTF-8").read(),
-                    random_id = self.random_id()
-                )
-                self.c.execute('SELECT parameter, class FROM subscriptions_playground_1 WHERE id=%d' % (self.curid,))
-                print('Выбор пользователя: ',matching)
-                matching = self.c.fetchall()
-                for predmet in matching:
-                    parameter = predmet[0]
-                    class_ = predmet[1]
-                    print(parameter,class_)
-                    self.sendIfRegistered(event, class_, parameter, record=False)
+                self.StartRegistration(peerid)
+                LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Запрос на регистрацию от %s(%d), peerid = ' % (self.GetName(peerid, 'nom'), peerid))
 
-        elif self.msg == 'помощь':
-            self.addNewUser(event)
-            self.vk.messages.send(
-                user_id=event.user_id,
-                message='Расписание - узнать расписание на сегодня \n Помощь - список команд \n Регистрация - зарегистрироваться на постоянную рассылку расписания',
-                keyboard=open("json/menu.json", "r", encoding="UTF-8").read(),
-                random_id = self.random_id()
-            )
+        else:
+            state = self.GetUserState(peerid)[0]
+            print(state)
+            if(state == "setplate"):
+                self.SetPlate(peerid, msgeLower)
+            elif(state == "setclass"):
+                self.SetClass(peerid, msgeLower)
+            elif(state == "setparameter"):
+                print(123);
 
-        elif self.msg == 'регистрация':
-            self.addNewUser(event)
-            self.registerNewUser(event)
 
-        elif self.msg == 'удалить профиль':
-            self.addNewUser(event)
-            self.c.execute('SELECT id FROM subscriptions_playground_1 WHERE id=%d' % (self.curid,))
-            if self.c.fetchone() is None:
-                self.vk.messages.send(
-                    user_id=event.user_id,
-                    message='Вы не зарегистрированы',
-                    keyboard=open("json/menu.json", "r", encoding="UTF-8").read(),
-                    random_id = self.random_id()
-                )
+
+    def StartRegistration(self, peerid):
+        cmd = "INSRET INTO subscriptions(id) VALUES (%d)" % (peerid)
+        self.c.execute(cmd)
+        self.conn.commit()
+        #Переход к сл. шагу и отсылка сл. требований
+        cmd = "INSRET INTO users(state) WHERE (id = %d) VALUES ('%s')" % (peerid, 'setplate')
+        msg = 'Пожалуйста укажите площадку: "Первая" или "Вторая"'
+        self.SendMessage(peerid, msg, 4)
+        self.c.execute(cmd)
+        self.conn.commit()
+
+    def SetPlate(self, peerid, plate):
+        intPlate = 0
+        plate = plate.replace("(на шапошникова)", "")
+        plate = plate.replace("(на студенческой)", "")
+        if plate == 'первая' or plate == 'вторая':
+            if plate == 'первая':
+                intPlate = 1
             else:
-                self.generateJSON(event)
-                self.vk.messages.send(
-                    user_id=event.user_id,
-                    message='Укажите группу для удаления',
-                    keyboard=open(str(event.user_id)+".json", "r", encoding="UTF-8").read(),
-                    random_id = self.random_id()
-                )
-                self.c.execute("UPDATE users SET status = '%s' WHERE id = %d" %
-                          ('deleting', self.curid))
-
-        elif self.msg == 'команды':
-            self.vk.messages.send(
-                user_id=event.user_id,
-                message='Доступные вам команды"',
-                keyboard=open("json/commands.json", "r", encoding="UTF-8").read(),
-                random_id = self.random_id()
-            )
-
-        elif self.msg == 'назад':
-            self.vk.messages.send(
-                user_id=event.user_id,
-                message='Главное меню',
-                keyboard=open("json/menu.json", "r", encoding="UTF-8").read(),
-                random_id = self.random_id()
-            )
-            self.c.execute('SELECT status FROM users WHERE id=%d' % (self.curid,))
-            matching = self.c.fetchone()[0]
-            if matching == 'deleting':
-                os.remove(str(event.user_id)+".json")
-                self.c.execute("UPDATE users SET status = '%s' WHERE id = %d" %
-                          ('', self.curid))
-                self.conn.commit()
-
-        else:
-            self.addNewUser(event)
-            self.c.execute('SELECT status FROM users WHERE id=%d' % (self.curid))
-            matching = self.c.fetchone()[0]
-            if matching == '':
-                self.c.execute('SELECT * FROM subscriptions_playground_1 WHERE id=%d' % (self.curid,))
-                print(self.c.fetchone())
-                self.vk.messages.send(
-                    user_id=event.user_id,
-                    message='Такой команды нет, напишите "Помощь"',
-                    keyboard=open("json/menu.json", "r", encoding="UTF-8").read(),
-                    random_id = self.random_id()
-                )
-            elif matching == 'deleting':
-                print('выполняю делит')
-                self.deleteUser(event, self.msg)
-            elif matching == 'afterRegister':
-                self.c.execute("UPDATE users SET status = '%s' WHERE id = %d" %
-                          ('', self.curid))
-                self.vk.messages.send(
-                    user_id=self.curid,
-                    message='С помощью команды "Расписание", вы можете узнать расписание для групп, на которые подписаны',
-                    keyboard=open("json/menu.json", "r", encoding="UTF-8").read(),
-                    random_id=self.random_id()
-                )
-                self.conn.commit()
-
-    def addNewUser(self, curevent):
-
-        curid = curevent.user_id
-        self.c.execute('SELECT id FROM users WHERE id=(%d)' % (curid))
-        matching = self.c.fetchone()
-        print(matching)
-        if matching == None:
-            self.c.execute("INSERT INTO users VALUES (%d, '%s')" % (curid, ''))
-            #conn.commit()
-        else:
-            self.checkStep(curevent)
-
-    def checkStep(self, curevent):
-        self.curid = curevent.user_id
-        self.c.execute('SELECT status FROM users WHERE id=(%d)' % (self.curid))
-        matching = self.c.fetchone()[0]
-        if curevent.text.lower() == 'отмена' and matching != '':
-            self.c.execute("UPDATE users SET status = '%s' WHERE id = %d" %
-                      ('afterRegister', self.curid))
-            self.conn.commit()
-            try:
-                self.c.execute("DELETE FROM subscriptions_playground_1 WHERE id =%d AND (class IS NULL OR parameter IS NULL)" %
-                          (self.curid,))
-                self.conn.commit()
-            except:
-                return
-            return
-        #Здесь запускаем метод, который записывает площадку и выводим сообщение о запросе
-        if matching == 'firststep':
-            self.firstStep(curevent)
-        #Здесь запускаем метод, который записывает группу/ФИО и переходим на конечный шаг
-        elif matching == 'secondstep':
-            self.secondStep(curevent)
-
-    def firstStep(self, curevent):
-        curid = curevent.user_id
-        self.c.execute("UPDATE users SET status = '%s' WHERE id = %d" %
-                  ('secondstep', curid))
-        self.conn.commit()
-        if curevent.text.lower() == 'студент':
-            self.vk.messages.send(
-                user_id=curid,
-                message='Укажите группу',
-                keyboard=open("json/cancel.json", "r", encoding="UTF-8").read(),
-                random_id=self.random_id()
-            )
-            self.c.execute("UPDATE subscriptions_playground_1 SET class = '%s' WHERE id = %d AND class IS NULL" %
-                      ('student', curid,))
-            self.conn.commit()
-        elif curevent.text.lower() == 'преподаватель':
-            self.vk.messages.send(
-                user_id=curid,
-                message='Укажите ваше ФИО(например Базин Е.С.)',
-                keyboard=open("json/cancel.json", "r", encoding="UTF-8").read(),
-                random_id=self.random_id()
-            )
-            self.c.execute("UPDATE subscriptions_playground_1 SET class = '%s' WHERE id = %d AND class IS NULL" %
-                      ('teacher', curid,))
+                intPlate = 2
+            cmd = "INSRET INTO subscriptions(plate) WHERE (id = %d) VALUES (%d)" % (peerid, intPlate)
+            self.c.execute(cmd)
             self.conn.commit()
         else:
-            self.vk.messages.send(
-                user_id=curid,
-                message='Укажите правмльный вариант(Студент/Преподаватель)',
-                keyboard=open("json/cancel.json", "r", encoding="UTF-8").read(),
-                random_id=self.random_id()
-            )
-            self.c.execute("UPDATE users SET status = '%s' WHERE id = %d" %
-                      ('firststep', curid))
+            errorMessage = "Пожалуйста укажите площадку правильно: 'Первая' или 'Вторая'"
+            self.SendMessage(peerid, errorMessage, 4)
 
-    def secondStep(self, curevent):
-        curid = curevent.user_id
-        self.c.execute('SELECT parameter FROM subscriptions_playground_1 WHERE id=%d AND parameter IS NULL' % (self.curid))
-        self.conn.commit()
-        matching = self.c.fetchall()
-        match = False
-        for a in matching:
-            if a[0] == curevent.text.lower():
-                match = True
-        if match != True:
-            self.vk.messages.send(
-                user_id=curid,
-                message='Вы успешно зарегистрированы',
-                keyboard=open("json/commands.json", "r", encoding="UTF-8").read(),
-                random_id=self.random_id()
-            )
-            self.c.execute("UPDATE subscriptions_playground_1 SET parameter = '%s' WHERE id = %d AND parameter IS NULL" %
-                      (curevent.text.lower(), curid))
-            self.c.execute("UPDATE users SET status = '%s' WHERE id = %d" %
-                      ('afterRegister', curid))
-            self.conn.commit()
-            self.c.execute('SELECT parameter,class FROM subscriptions_playground_1 WHERE id=%d' % (curid,))
-            self.conn.commit()
-            self.matching = self.c.fetchall()
-            print(self.matching)
-            self.parameter = self.matching[-1][0]
-            self.class_ = self.matching[-1][1]
-            print(self.parameter,self.class_)
-            self.sendIfRegistered(curevent, self.class_, self.parameter, record=True)
-        else:
-            self.vk.messages.send(
-                user_id=curid,
-                message='Вы уже подписаны на эту группу',
-                random_id=self.random_id()
-            )
-            self.destroyInRegistration(curevent)
-
-    def destroyInRegistration(self, curevent):
-        self.curid = curevent.user_id
-        try:
-            self.c.execute("DELETE FROM subscriptions_playground_1 WHERE id =%d AND parameter IS NULL)" %
-                      (self.curid,))
-            self.conn.commit()
-        except:
-            return
-        self.c.execute("UPDATE users SET status = '%s' WHERE id = %d" % ('afterRegister', self.curid))
+        cmd = "INSRET INTO subscriptions(state) WHERE (id = %d) VALUES ('%s')" % (peerid, 'setclass')
+        self.c.execute(cmd)
         self.conn.commit()
 
-    def registerNewUser(self, curevent):
-        curid = curevent.user_id
-        self.vk.messages.send(
-            user_id=curid,
-            message='Укажите кем вы являетесь(Преподаватель/Студент)',
-            keyboard=open("json/isTeacher.json", "r", encoding="UTF-8").read(),
-            random_id=self.random_id()
-        )
-        self.c.execute("UPDATE users SET status = '%s' WHERE id = %d" %
-                  ('firststep', curid))
-        self.c.execute("INSERT INTO subscriptions_playground_1(id) VALUES (%d)" %
-                  (curid,))
+    def SetClass(self, peerid, Class):
+        cmd = "INSRET INTO subscriptions(plate) WHERE (id = %d) VALUES ('%s')" % (peerid, Class)
+        self.c.execute(cmd)
         self.conn.commit()
 
-    def deleteUser(self, curevent, group):
-        self.curid = curevent.user_id
-        self.c.execute("DELETE FROM subscriptions_playground_1 WHERE id = %d AND parameter = '%s'" %
-                  (self.curid, group,))
+        cmd = "INSRET INTO subscriptions(state) WHERE (id = %d) VALUES ('%s')" % (peerid, 'setparameter')
+        self.c.execute(cmd)
         self.conn.commit()
-        self.vk.messages.send(
-            user_id=curevent.user_id,
-            message='Профиль успешно удален',
-            keyboard=open("json/menu.json", "r", encoding="UTF-8").read(),
-            random_id = self.random_id()
-        )
-        self.c.execute("UPDATE users SET status = '%s' WHERE id = %d" %
-                  ('', self.curid))
-        self.conn.commit()
-        os.remove(str(curevent.user_id)+".json")
 
-    def generateJSON(self, curevent):
-        self.curid = curevent.user_id
+    def SetClass(self, peerid, Parameter):
+        cmd = "INSRET INTO subscriptions(plate) WHERE (id = %d) VALUES ('%s')" % (peerid, Parameter)
+        self.c.execute(cmd)
+        self.conn.commit()
+
+        cmd = "INSRET INTO subscriptions(state) WHERE (id = %d) VALUES ('%s')" % (peerid, 'finishedregistration')
+        self.c.execute(cmd)
+        self.conn.commit()
+
+
+
+#----------------------------------------------------------------------------------------------------------------------
+    def registerNewUser(self, curid):
+        print(123);
+#TODO Он пишет, что профиль удален в любом случае
+    def deleteUser(self, curid, group):
+        print(123);
+
+    def generateJSON(self, curid):
+        self.curid = curid
         self.c.execute('SELECT parameter FROM subscriptions_playground_1 WHERE id=%d' % (self.curid,))
         matching = self.c.fetchall()
         print(matching);
@@ -330,9 +165,64 @@ class Messg:
                 data, outfile,ensure_ascii=False
             )
 
+    def addNewUser(self, peerid):
+        cmd = "SELECT id FROM users WHERE id = %d" % (int(peerid))
+        self.c.execute(cmd)
+        result = self.c.fetchone()
+        if result == None:
+            LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Добавил пользователя %s(%d) в таблицу Users' % (self.GetName(peerid, 'nom'), peerid))
+            cmd = "INSERT INTO users(id, status) VALUES (%d, '')" % (int(peerid))
+            self.c.execute(cmd)
+            self.conn.commit()
+
+    def SendMessage(self, peerid, mesg, keyboard):
+        self.vk.messages.send(
+            peer_id=peerid,
+            message=mesg,
+            keyboard=open(self.keyBoardList[keyboard], "r", encoding="UTF-8").read(),
+            random_id=self.random_id()
+        )
+
     def chk(self):
         while True:
-            for event in self.longpoll.listen():
-                if event.type == self.VkEventType.MESSAGE_NEW and event.to_me and event.text:
-                    print(event.user_id)
-                    self.checkMessage(event)
+            for event in self.blongpoll.listen():
+                if event.type == self.VkBotEventType.MESSAGE_NEW:
+                    peerid = event.raw['object']['peer_id']
+                    msge = event.raw['object']['text']
+                    time = self.GetTime()
+                    if event.from_user:
+                        name = self.GetName(peerid, 'nom')
+                        LogManager.AddLog(str(time) + '  ' + name +': ' + str(msge))
+                        self.checkMessage(msge=msge, peerid=peerid)
+                    else:
+                        if '[club170013824|@nrtkbotvk] ' in msge:
+                            msge= msge.replace('[club170013824|@nrtkbotvk] ', '')
+                        elif '[club170013824|расписание нртк] ' in msge:
+                            msge = msge.replace('[club170013824|расписание нртк] ', '')
+
+                        LogManager.AddLog(time + '  ' + self.GetName(peerid, 'nom') + '(' + str(peerid) + '): ' + msge)
+                        self.checkMessage(msge=msge, peerid=peerid)
+
+    def GetName(self,peerid, name_case):
+        if(peerid < 2000000001):
+            name = self.vk.users.get(user_id=peerid, fields = 'nickname', name_case=name_case)
+            name = str(name[0]['first_name']) + ' '+ str(name[0]['last_name'])
+            return name
+        else:
+            name = self.vk._method("messages.getChat", {"chat_id": peerid})
+            print(name)
+
+
+    def GetTime(self):
+        time = datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S")
+        return time
+
+    def GetUserState(self, peerid):
+        cmd = "SELECT status FROM users WHERE id = %d" % (int(peerid))
+        self.c.execute(cmd)
+        state = self.c.fetchone()
+        return state
+
+
+messg = Messg()
+messg.chk()

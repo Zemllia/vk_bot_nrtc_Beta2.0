@@ -8,6 +8,13 @@
       },
       "color": "positive"
     },
+      {
+      "action": {
+        "type": "text",
+        "label": "Вторая(на Шапошникова)"
+      },
+      "color": "positive"
+    },
 	{
       "action": {
         "type": "text",

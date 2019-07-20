@@ -1,19 +1,20 @@
 
-# ---------------------Token VK API--------------------- #
+# ---------------------Token VK API и Group id--------------------- #
 
 # Расписание НРТК
-vk_token = "9331b5500f6de8f6b09e83b13f89e5a38b432b69a6e7615e9d76a9d2eec1e50d74d8f90d5b571c2afa582"
+# vk_token = "9331b5500f6de8f6b09e83b13f89e5a38b432b69a6e7615e9d76a9d2eec1e50d74d8f90d5b571c2afa582"
+# group_id = "170013824"
 
 # Тест бота расписания
-# vk_token = "1c5b8dc15da393fb051d0b85679373b62ed9cf7ec5df7d2557022cdfcb970f8c1fc40a116c1efdfc9e8bf"
-
+vk_token = "1c5b8dc15da393fb051d0b85679373b62ed9cf7ec5df7d2557022cdfcb970f8c1fc40a116c1efdfc9e8bf"
+group_id = "178183356"
 
 # ---------------------БД--------------------- #
-# Вниший
-host = '95.79.50.190'
+# Внеший
+# host = '95.79.50.190'
 
 # Локальный
-# host = '192.168.0.60'
+host = '192.168.0.60'
 
 # БД
 database = 'vk_bot'

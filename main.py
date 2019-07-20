@@ -1,4 +1,5 @@
 import message_sender
+import event_handler.messages
 from event_handler import event_handler
 from parsers.parser1 import parser1
 from parsers.parser2 import parser2
@@ -14,6 +15,8 @@ Parser1.start()
 
 Parser2 = parser2.Parser(Sender.add)
 Parser2.start()
+
+
 
 
 def one_time_schedule(user_id, place, class_, parameter, record=False):

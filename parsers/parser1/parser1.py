@@ -346,6 +346,11 @@ class Parser:
             picture, html = self.create_or_query(table, class_, parameter)
             self.Sender(user_id, attachment=picture)
 
+            self.c.execute("UPDATE subscriptions_info_1 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}' and {0}='')".format(
+                'a' + str(self.date_conversion(table[1].text)).replace("-", ""), html,
+                class_, parameter))
+            self.conn.commit()
+
     def auto_mailing(self):
         while True:
             html = self.pending_update()
@@ -364,11 +369,10 @@ class Parser:
                         for user in self.c.fetchall():
                             self.Sender(user[0], attachment=picture)
 
-                        self.c.execute("UPDATE subscriptions_info_1 SET {} = '{}' WHERE (class='{}' and parameter='{}')".format(
+                        self.c.execute("UPDATE subscriptions_info_1 SET {} = '{}' WHERE (class='{}' and parameter='{}' and subscription_count=1)".format(
                             'a'+str(self.date_conversion(table[1].text)).replace("-", ""), html,
                             line[0], line[1]))
                         self.conn.commit()
-
 
     def start(self):
         auto_mailing = Thread(target=self.auto_mailing, name='auto_mailing_parser1')

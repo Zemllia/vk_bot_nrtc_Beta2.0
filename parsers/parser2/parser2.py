@@ -2,7 +2,7 @@ import requests, imgkit, json, random, datetime, time, random
 from bs4 import BeautifulSoup
 
 
-class parser:
+class Parser:
     def __init__(self, conn, c, vk):
 
         self.vk = vk

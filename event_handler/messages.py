@@ -182,7 +182,7 @@ class Messg:
         msg = 'Вы успешно зарегистрированы!'
         self.SendMessage(peerid, msg, 3)
         lastRegData = self.GetUserDataFromSubscriptions(peerid)[-1]
-        self.InsertIntoPlate(lastRegData[1], lastRegData[3], lastRegData[2])
+        self.InsertIntoPlate(lastRegData[1], lastRegData[2], lastRegData[3])
         self.onetimeschedule(peerid, lastRegData[1], lastRegData[2], lastRegData[3])
 
 
@@ -196,8 +196,15 @@ class Messg:
         self.c.execute(cmd)
         self.conn.commit()
 
-#TODO Он пишет, что профиль удален в любом случае
     def DeleteUser(self, peerid, parameter):
+        cmd = "SELECT plate, class FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
+        self.c.execute(cmd)
+        result = self.c.fetchone()
+        print(result)
+        if (result != None):
+            print("Result isn't none")
+            self.DeleteFromPlate(result[0], result[1], parameter)
+
         cmd = "DELETE FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
         self.c.execute(cmd)
         self.conn.commit()
@@ -205,12 +212,6 @@ class Messg:
         cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
         self.c.execute(cmd)
         self.conn.commit()
-
-        cmd = "SELECT (plate, class) FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
-        self.c.execute(cmd)
-        result = self.c.fetchone()
-        if(result != None):
-            self.DeleteFromPlate(result[0], result[1], parameter)
 
         self.SendMessage(peerid, "Профиль " + str(parameter) + (" успешно удален"), 3)
 
@@ -307,15 +308,16 @@ class Messg:
             self.conn.commit()
 
     def DeleteFromPlate(self, plate, Class, parameter):
-        cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" % (plate, parameter, Class)
+        print(plate)
+        cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" % (int(plate), parameter, Class)
         self.c.execute(cmd)
         result = self.c.fetchone()
         if (result[0] == 1):
-            cmd = "DELETE FROM subscriptions_info_%d WHERE class = '%s' AND parameter = '%s'" % (plate, Class, parameter)
+            cmd = "DELETE FROM subscriptions_info_%d WHERE class = '%s' AND parameter = '%s'" % (int(plate), Class, parameter)
             self.c.execute(cmd)
             self.conn.commit()
         else:
-            cmd = "UPDATE subscriptions_info_%d SET subscription_count = %d WHERE parameter = '%s' AND class = '%s'" % (plate, result[0] - 1, parameter, Class)
+            cmd = "UPDATE subscriptions_info_%d SET subscription_count = %d WHERE parameter = '%s' AND class = '%s'" % (int(plate), result[0] - 1, parameter, Class)
             self.c.execute(cmd)
             self.conn.commit()
 

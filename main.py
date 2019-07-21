@@ -1,5 +1,5 @@
 import message_sender
-import event_handler.messages
+#import event_handler.messages
 from event_handler import event_handler
 from parsers.parser1 import parser1
 from parsers.parser2 import parser2
@@ -19,11 +19,11 @@ Parser2.start()
 
 
 
-def one_time_schedule(user_id, place, class_, parameter, record=False):
-    if place == 1:
+def one_time_schedule(user_id, plate, class_, parameter, record=False):
+    if plate == 1:
         Parser1.single(user_id, class_, parameter, record)
 
-    elif place == 2:
+    elif plate == 2:
         Parser2.single(user_id, class_, parameter, record)
 
 

@@ -3,6 +3,7 @@ import LogManager,config
 import random
 from datetime import datetime
 import psycopg2
+import main
 
 from threading import Thread
 
@@ -50,7 +51,7 @@ class Messg:
             LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Отправка сообщения пользователю %s(%d): "Привет"' % (self.GetName(peerid, 'nom'), peerid))
 
         elif msgeLower == "регистрация":
-            if(self.GetUserState(peerid) != ""):
+            if(self.GetUserState(peerid) == ""):
                 msg = "Вы уже проходите регистрацию"
                 state = self.GetUserState(peerid)
                 keyboardInt = 0
@@ -73,23 +74,23 @@ class Messg:
             elif(state == "setclass"):
                 self.SetClass(peerid, msgeLower)
             elif(state == "setparameter"):
-                print(123);
+                self.SetParameter(peerid, msgeLower)
 
 
 
     def StartRegistration(self, peerid):
-        cmd = "INSRET INTO subscriptions(id) VALUES (%d)" % (peerid)
+        cmd = "INSERT INTO subscriptions(id) VALUES (%d)" % (peerid)
         self.c.execute(cmd)
         self.conn.commit()
         #Переход к сл. шагу и отсылка сл. требований
-        cmd = "INSRET INTO users(state) WHERE (id = %d) VALUES ('%s')" % (peerid, 'setplate')
-        msg = 'Пожалуйста укажите площадку: "Первая" или "Вторая"'
-        self.SendMessage(peerid, msg, 4)
+        cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('setplate', peerid)
         self.c.execute(cmd)
         self.conn.commit()
+        msg = 'Пожалуйста укажите площадку: "Первая" или "Вторая"'
+        self.SendMessage(peerid, msg, 4)
 
     def SetPlate(self, peerid, plate):
-        intPlate = 0
+        #intPlate = 0
         plate = plate.replace("(на шапошникова)", "")
         plate = plate.replace("(на студенческой)", "")
         if plate == 'первая' or plate == 'вторая':
@@ -97,45 +98,64 @@ class Messg:
                 intPlate = 1
             else:
                 intPlate = 2
-            cmd = "INSRET INTO subscriptions(plate) WHERE (id = %d) VALUES (%d)" % (peerid, intPlate)
+            cmd = "UPDATE subscriptions SET plate = %d WHERE id = %d AND plate IS null" % (intPlate, peerid)
             self.c.execute(cmd)
             self.conn.commit()
+            # Ставим state на указание class
+            cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('setclass', peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
+            # Отправка сообщения с просьбой о введении class
+            msg = 'Укажите кто вы: "Преподаватель" или "Студент"'
+            self.SendMessage(peerid, msg, 2)
         else:
             errorMessage = "Пожалуйста укажите площадку правильно: 'Первая' или 'Вторая'"
             self.SendMessage(peerid, errorMessage, 4)
 
-        cmd = "INSRET INTO subscriptions(state) WHERE (id = %d) VALUES ('%s')" % (peerid, 'setclass')
-        self.c.execute(cmd)
-        self.conn.commit()
-
     def SetClass(self, peerid, Class):
-        cmd = "INSRET INTO subscriptions(plate) WHERE (id = %d) VALUES ('%s')" % (peerid, Class)
+        if Class == "преподаватель" or Class == "студент":
+            if Class == "преподаватель":
+                Class = "teacher"
+                msg = 'Укажите ФИО, например Базин Е.С.'
+                self.SendMessage(peerid, msg, 0)
+            else:
+                Class = "student"
+                msg = 'Укажите Группу, например 2ПКС-17-1к (Довольно важно указать в таком виде, иначе могут появиться некоторые проблемы, в будущем обязательно сделаем удобнее)'
+                self.SendMessage(peerid, msg, 0)
+
+            cmd = "UPDATE subscriptions SET class = '%s' WHERE id = %d AND class IS null" % (Class, peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
+
+            cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('setparameter', peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
+        else:
+            errorMessage = 'Пожалуйста укажите кто вы правильно: "Преподаватель" или "Студент"'
+            self.SendMessage(peerid, errorMessage, 2)
+
+    def SetParameter(self, peerid, Parameter):
+        #TODO Список всех групп и преподавателей, поиск по нему и вывод совпадений
+        cmd = "UPDATE subscriptions SET parameter = '%s' WHERE id = %d AND parameter IS null" % (Parameter, peerid)
         self.c.execute(cmd)
         self.conn.commit()
 
-        cmd = "INSRET INTO subscriptions(state) WHERE (id = %d) VALUES ('%s')" % (peerid, 'setparameter')
+        cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
         self.c.execute(cmd)
         self.conn.commit()
 
-    def SetClass(self, peerid, Parameter):
-        cmd = "INSRET INTO subscriptions(plate) WHERE (id = %d) VALUES ('%s')" % (peerid, Parameter)
-        self.c.execute(cmd)
-        self.conn.commit()
-
-        cmd = "INSRET INTO subscriptions(state) WHERE (id = %d) VALUES ('%s')" % (peerid, 'finishedregistration')
-        self.c.execute(cmd)
-        self.conn.commit()
-
+        msg = 'Вы успешно зарегистрированы!'
+        self.SendMessage(peerid, msg, 3)
+        lastRegData = self.GetUserDataFromSubscriptions(peerid)[-1]
+        main.one_time_schedule(peerid, lastRegData[1], lastRegData[3])
 
 
 #----------------------------------------------------------------------------------------------------------------------
-    def registerNewUser(self, curid):
-        print(123);
 #TODO Он пишет, что профиль удален в любом случае
     def deleteUser(self, curid, group):
         print(123);
 
-    def generateJSON(self, curid):
+    def generateJSONToDelete(self, curid):
         self.curid = curid
         self.c.execute('SELECT parameter FROM subscriptions_playground_1 WHERE id=%d' % (self.curid,))
         matching = self.c.fetchall()
@@ -223,6 +243,14 @@ class Messg:
         state = self.c.fetchone()
         return state
 
+    def GetUserDataFromSubscriptions(self, peerid):
+        cmd = "SELECT * FROM subscriptions WHERE id=%d" % (peerid)
+        self.c.execute(cmd)
+        result = self.c.fetchall()
+        return result
+
+    def AddToCurPlate(self):
+        print("Add to cur plate")
 
 messg = Messg()
 messg.chk()

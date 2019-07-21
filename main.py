@@ -1,7 +1,6 @@
 import message_sender
-from event_handler import event_handler, messages
 
-from event_handler import event_handler
+from event_handler import messages
 
 from parsers.parser1 import parser1
 from parsers.parser2 import parser2
@@ -24,9 +23,7 @@ def one_time_schedule(user_id, plate, class_, parameter):
     elif plate == 2:
         Parser2.single(user_id, class_, parameter)
 
+
 messager = messages.Messg(one_time_schedule)
 messager.Start()
 
-
-# Запуск оброботика событий
-event_handler.main(one_time_schedule)

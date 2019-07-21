@@ -346,7 +346,7 @@ class Parser:
             picture, html = self.create_or_query(table, class_, parameter)
             self.Sender(user_id, attachment=picture)
 
-            self.c.execute("UPDATE subscriptions_info_1 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}' and {0}=NULL and subscription_count=1)".format(
+            self.c.execute("UPDATE subscriptions_info_1 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}' and {0} is NULL and subscription_count=1)".format(
                 'a' + str(self.date_conversion(table[1].text)).replace("-", ""), html,
                 class_, parameter))
             self.conn.commit()

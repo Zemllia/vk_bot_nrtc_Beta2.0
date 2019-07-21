@@ -1,5 +1,11 @@
 import message_sender
+<<<<<<< Updated upstream
 from event_handler import event_handler, messages
+=======
+
+from event_handler import event_handler
+
+>>>>>>> Stashed changes
 from parsers.parser1 import parser1
 from parsers.parser2 import parser2
 

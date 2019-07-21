@@ -3,7 +3,7 @@ import LogManager,config
 import random
 from datetime import datetime
 import psycopg2
-import main
+import apiai
 
 from threading import Thread
 
@@ -15,7 +15,7 @@ import vk_api
 class Messg:
     from vk_api.longpoll import VkEventType
     from vk_api.bot_longpoll import VkBotEventType
-    def __init__(self):
+    def __init__(self, onetimeschedulefunc):
         self.vk_session = vk_api.VkApi(token=config.vk_token)
         from vk_api.longpoll import VkLongPoll
         from vk_api.bot_longpoll import VkBotLongPoll
@@ -29,8 +29,8 @@ class Messg:
             password=config.password
         )
         self.c = self.conn.cursor()
-        self.keyBoardList = ["json/cancel.json","json/commands.json","json/isTeacher.json","json/menu.json","json/plate.json"]
-
+        self.keyBoardList = ["event_handler/json/cancel.json", "event_handler/json/commands.json", "event_handler/json/isTeacher.json", "event_handler/json/menu.json", "event_handler/json/plate.json"]
+        self.onetimeschedule = onetimeschedulefunc
 
 
 
@@ -45,12 +45,7 @@ class Messg:
     def checkMessage(self, msge:str, peerid):
         self.addNewUser(peerid)
         msgeLower = msge.lower()
-        if msgeLower == 'привет':
-            msg = 'Привет! Напиши мне "Расписание!"'
-            self.SendMessage(peerid, msg, 3)
-            LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Отправка сообщения пользователю %s(%d): "Привет"' % (self.GetName(peerid, 'nom'), peerid))
-
-        elif msgeLower == "регистрация":
+        if msgeLower == "регистрация":
             if(self.GetUserState(peerid) == ""):
                 msg = "Вы уже проходите регистрацию"
                 state = self.GetUserState(peerid)
@@ -66,15 +61,55 @@ class Messg:
                 self.StartRegistration(peerid)
                 LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Запрос на регистрацию от %s(%d), peerid = ' % (self.GetName(peerid, 'nom'), peerid))
 
+        elif msgeLower == 'удалить профиль':
+            cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('deleting', peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
+            self.generateJSONToDelete(peerid)
+            self.vk.messages.send(
+                peer_id=peerid,
+                message="Укажите группу/преподавателя для удаления",
+                keyboard=open(str(peerid)+".json", "r", encoding="UTF-8").read(),
+                random_id=self.random_id()
+            )
+
+        elif msgeLower == "расписание":
+            listOfUserGroups = self.GetUserDataFromSubscriptions(peerid)
+            if(len(listOfUserGroups) == 0):
+                msg = 'Вы не зарегистрированы ни на одну группу, напишите команду "Регистрация"'
+                self.SendMessage(peerid, msg, 3)
+            else:
+                for item in listOfUserGroups:
+                    self.onetimeschedule(peerid, item[1], item[2], item[3])
+
+        elif msgeLower == "команды":
+            msg = 'Меню команд'
+            self.SendMessage(peerid, msg, 1)
+
+        elif msgeLower == "назад":
+            msg = 'Главное меню'
+            self.SendMessage(peerid, msg, 3)
+
+        elif msgeLower == "отмена":
+            userState = self.GetUserState(peerid)
+            if userState != '' and userState != 'onetime' and userState != 'deleting':
+                self.DestroyInRegistration(peerid)
+                msg = 'Главное меню'
+                self.SendMessage(peerid, msg, 3)
+
+
         else:
             state = self.GetUserState(peerid)[0]
-            print(state)
             if(state == "setplate"):
                 self.SetPlate(peerid, msgeLower)
             elif(state == "setclass"):
                 self.SetClass(peerid, msgeLower)
             elif(state == "setparameter"):
                 self.SetParameter(peerid, msgeLower)
+            elif(state == "deleting"):
+                self.DeleteUser(peerid, msgeLower)
+            else:
+                self.TalkWithBot(peerid, msge)
 
 
 
@@ -147,19 +182,32 @@ class Messg:
         msg = 'Вы успешно зарегистрированы!'
         self.SendMessage(peerid, msg, 3)
         lastRegData = self.GetUserDataFromSubscriptions(peerid)[-1]
-        main.one_time_schedule(peerid, lastRegData[1], lastRegData[3])
+        self.onetimeschedule(peerid, lastRegData[1], lastRegData[2], lastRegData[3])
 
+    def DestroyInRegistration(self, peerid):
+        cmd = "DELETE FROM subscriptions WHERE id=%d AND parameter IS NULL" % peerid
+        self.c.execute(cmd)
+        self.conn.commit()
 
-#----------------------------------------------------------------------------------------------------------------------
+        cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
+        self.c.execute(cmd)
+        self.conn.commit()
+
 #TODO Он пишет, что профиль удален в любом случае
-    def deleteUser(self, curid, group):
-        print(123);
+    def DeleteUser(self, peerid, parameter):
+        cmd = "DELETE FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
+        self.c.execute(cmd)
+        self.conn.commit()
 
-    def generateJSONToDelete(self, curid):
-        self.curid = curid
-        self.c.execute('SELECT parameter FROM subscriptions_playground_1 WHERE id=%d' % (self.curid,))
+        cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
+        self.c.execute(cmd)
+        self.conn.commit()
+
+        self.SendMessage(peerid, "Профиль " + str(parameter) + (" успешно удален"), 3)
+
+    def generateJSONToDelete(self, peerid):
+        self.c.execute('SELECT parameter FROM subscriptions WHERE id=%d' % peerid)
         matching = self.c.fetchall()
-        print(matching);
         data = {}
         data['one_time'] = True
         data['buttons'] = []
@@ -179,8 +227,7 @@ class Messg:
             },
             "color": "negative"
         }])
-        print(data)
-        with open(str(self.curid)+'.json', 'w', encoding='utf-8') as outfile:
+        with open(str(peerid)+'.json', 'w', encoding='utf-8') as outfile:
             json.dump(
                 data, outfile,ensure_ascii=False
             )
@@ -203,6 +250,19 @@ class Messg:
             random_id=self.random_id()
         )
 
+    def TalkWithBot(self, peerid, message):
+        request = apiai.ApiAI('2ec1776470d340a5a793ff5afa92b63b').text_request()  # Токен API к Dialogflow
+        request.lang = 'ru'  # На каком языке будет послан запрос
+        request.session_id = 'BatlabAIBot'  # ID Сессии диалога (нужно, чтобы потом учить бота)
+        request.query = message  # Посылаем запрос к ИИ с сообщением от юзера
+        responseJson = json.loads(request.getresponse().read().decode('utf-8'))
+        response = responseJson['result']['fulfillment']['speech']
+
+        if response:
+            self.SendMessage(peerid, response, 3)
+        else:
+            self.SendMessage(peerid, "Я вас не понял", 3)
+
     def chk(self):
         while True:
             for event in self.blongpoll.listen():
@@ -212,7 +272,7 @@ class Messg:
                     time = self.GetTime()
                     if event.from_user:
                         name = self.GetName(peerid, 'nom')
-                        LogManager.AddLog(str(time) + '  ' + name +': ' + str(msge))
+                        LogManager.AddLog(time + '  ' + self.GetName(peerid, 'nom') + '(' + str(peerid) + '): ' + msge)
                         self.checkMessage(msge=msge, peerid=peerid)
                     else:
                         if '[club170013824|@nrtkbotvk] ' in msge:
@@ -230,7 +290,7 @@ class Messg:
             return name
         else:
             name = self.vk._method("messages.getChat", {"chat_id": peerid})
-            print(name)
+            return "Беседа"
 
 
     def GetTime(self):
@@ -249,8 +309,6 @@ class Messg:
         result = self.c.fetchall()
         return result
 
-    def AddToCurPlate(self):
-        print("Add to cur plate")
+    def Start(self):
+        self.chk()
 
-messg = Messg()
-messg.chk()

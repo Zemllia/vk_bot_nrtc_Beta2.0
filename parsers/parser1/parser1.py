@@ -184,7 +184,7 @@ class Parser:
         return date
 
     def assembly_student(self, table, parameter):
-        averaged_parameter = self.averaging_parameters('student', parameter)
+        averaged_parameter = self.averaged_parameter('student', parameter)
 
         result = str(self.head) + '<table cellspacing="0" border="0">'
         result += """   
@@ -202,7 +202,7 @@ class Parser:
         trs = table[3:]
 
         for i in range(len(trs)):
-            if self.averaging_parameters('student', trs[i].text).find(averaged_parameter) > 0 and not switch and trs[i].findAll(
+            if self.averaged_parameter('student', trs[i].text).find(averaged_parameter) > 0 and not switch and trs[i].findAll(
                     'td', attrs=self.signs_boundaries):
                 result += str(trs[i])
                 switch = True
@@ -222,7 +222,7 @@ class Parser:
         return result
 
     def assembly_teacher(self, table, parameter):
-        averaged_parameter = self.averaging_parameters('teacher', parameter)
+        averaged_parameter = self.averaged_parameter('teacher', parameter)
 
         result = str(self.head) + '<table cellspacing="0" border="0">'
         result += """   
@@ -246,7 +246,7 @@ class Parser:
             if not len(tr[i].findAll("td", self.signs_boundaries)) == 0:
                 upper_bound = i
 
-            elif self.averaging_parameters('teacher', tr[i].text).find(averaged_parameter) >= 0:
+            elif self.averaged_parameter('teacher', tr[i].text).find(averaged_parameter) >= 0:
                 try:
                     number = int(tr[i].findAll("td")[3].text)
 
@@ -268,11 +268,11 @@ class Parser:
                         break
 
                     elif switch:
-                        if self.averaging_parameters('teacher', tr[i].text).find(averaged_parameter) >= 0:
+                        if self.averaged_parameter('teacher', tr[i].text).find(averaged_parameter) >= 0:
                             x = '<tr>'
 
                             for td in tr[i].findAll('td'):
-                                if self.averaging_parameters('teacher', td.text).find(averaged_parameter) >= 0:
+                                if self.averaged_parameter('teacher', td.text).find(averaged_parameter) >= 0:
 
                                     if str(td).find('bgcolor') >= 0:
                                         y = str(td).split('bgcolor')
@@ -386,4 +386,6 @@ if __name__ == '__main__':
     class_ = 'student'
     parameter = '2ПКС-17-1к'
 
-    Parser1.single(user_id, class_, parameter)
+    time.sleep(1)
+
+    Parser1.single(user_id, class_, parameter, first_time=True)

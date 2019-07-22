@@ -186,7 +186,7 @@ class Messg:
         lastRegData = self.c.fetchone()
         print(lastRegData)
         self.InsertIntoPlate(lastRegData[0], lastRegData[1], lastRegData[2])
-        self.onetimeschedule(peerid, lastRegData[0], lastRegData[1], lastRegData[2])
+        self.onetimeschedule(peerid, lastRegData[0], lastRegData[1], lastRegData[2], first_time=True)
 
 
 

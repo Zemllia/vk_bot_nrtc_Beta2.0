@@ -18,6 +18,7 @@ import config
 class Parser:
     def __init__(self, Sender):
         self.Sender = Sender
+        self.averaged_parameter = functions.averaged_parameter
 
         self.signs_boundaries = config.signs_boundaries
 
@@ -32,15 +33,6 @@ class Parser:
         self.html = ''
         self.date = 0
         self.archive = {}
-
-    # Приведение к норм виду
-    def averaging_parameters(self, class_, parameter):
-        parameter = parameter.lower().replace(" ", "")
-        if class_ == 'teacher':
-            parameter = parameter.replace(".", "").replace(",", "")
-        else:
-            parameter = parameter.replace("-", "")
-        return parameter
 
     # Упровлеие колоками добавлеие удалеие дней
     def column_control(self, dates):
@@ -336,7 +328,7 @@ class Parser:
         return picture, html
 
     # Одиноный запрос расписания
-    def single(self, user_id, class_, parameter):
+    def single(self, user_id, class_, parameter, first_time):
         # Перебор таблиц
         if self.tables == []:
             self.Sender(user_id, message='Нет актуального расписания для {}.'.format(parameter))
@@ -346,10 +338,12 @@ class Parser:
             picture, html = self.create_or_query(table, class_, parameter)
             self.Sender(user_id, attachment=picture)
 
-            self.c.execute("UPDATE subscriptions_info_1 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}' and {0} is NULL and subscription_count=1)".format(
-                'a' + str(self.date_conversion(table[1].text)).replace("-", ""), html,
-                class_, parameter))
-            self.conn.commit()
+            if first_time:
+                self.c.execute(
+                    "UPDATE subscriptions_info_1 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}'and subscription_count=1)".format(
+                    'a' + str(self.date_conversion(table[1].text)).replace("-", ""), html,
+                    class_, parameter))
+                self.conn.commit()
 
     def auto_mailing(self):
         while True:

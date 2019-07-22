@@ -329,6 +329,6 @@ if __name__ == '__main__':
 
     user_id = 265868386
     class_ = 'teacher'
-    parameter = '123'
+    parameter = 'Бичинова К.М.'
 
     Parser1.single(user_id, class_, parameter, first_time=True)

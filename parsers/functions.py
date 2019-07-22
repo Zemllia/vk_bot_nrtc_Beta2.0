@@ -20,3 +20,12 @@ def photo_upload(picture):
     result = loads(result.text)
     result = vk.photos.saveMessagesPhoto(photo=result['photo'], server=result['server'], hash=result['hash'])
     return 'photo%i_%i' % (result[0]['owner_id'], result[0]['id'])
+
+
+def averaged_parameter(class_, parameter):
+    parameter = parameter.lower().replace(" ", "").replace("\r", "").replace("\n", "")
+    if class_ == 'teacher':
+        parameter = parameter.replace(".", "").replace(",", "")
+    else:
+        parameter = parameter.replace("-", "")
+    return parameter

@@ -105,7 +105,7 @@ class Messg:
             elif(state == "setclass"):
                 self.SetClass(peerid, msgeLower)
             elif(state == "setparameter"):
-                self.SetParameter(peerid, msgeLower)
+                self.SetParameter(peerid, msge)
             elif(state == "deleting"):
                 self.DeleteUser(peerid, msgeLower)
             else:
@@ -185,8 +185,8 @@ class Messg:
         self.c.execute(cmd)
         lastRegData = self.c.fetchone()
         print(lastRegData)
-        self.InsertIntoPlate(lastRegData[0], lastRegData[1], lastRegData[2])
-        self.onetimeschedule(peerid, lastRegData[0], lastRegData[1], lastRegData[2], first_time=True)
+        isFirstTime=self.InsertIntoPlate(lastRegData[0], lastRegData[1], lastRegData[2])
+        self.onetimeschedule(peerid, lastRegData[0], lastRegData[1], lastRegData[2], first_time=isFirstTime)
 
 
 
@@ -206,15 +206,18 @@ class Messg:
         if (result != None):
             self.DeleteFromPlate(result[0], result[1], parameter)
 
-        cmd = "DELETE FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
-        self.c.execute(cmd)
-        self.conn.commit()
+            cmd = "DELETE FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
+            self.c.execute(cmd)
+            self.conn.commit()
+
+            self.SendMessage(peerid, "Профиль " + str(parameter) + (" успешно удален"), 3)
+
+        else:
+            self.SendMessage(peerid, "Вы не подписаны на профиль " + str(parameter), 3)
 
         cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
         self.c.execute(cmd)
         self.conn.commit()
-
-        self.SendMessage(peerid, "Профиль " + str(parameter) + (" успешно удален"), 3)
 
     def generateJSONToDelete(self, peerid):
         self.c.execute('SELECT parameter FROM subscriptions WHERE id=%d' % peerid)
@@ -302,10 +305,12 @@ class Messg:
             cmd = "INSERT INTO subscriptions_info_%d(subscription_count, class, parameter) VALUES(1, '%s', '%s')" % (plate, Class, parameter)
             self.c.execute(cmd)
             self.conn.commit()
+            return True
         else:
             cmd = "UPDATE subscriptions_info_%d SET subscription_count = %d WHERE parameter = '%s' AND class = '%s'" % (plate, result[0] + 1, parameter, Class)
             self.c.execute(cmd)
             self.conn.commit()
+            return False
 
     def DeleteFromPlate(self, plate, Class, parameter):
         cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" % (int(plate), parameter, Class)

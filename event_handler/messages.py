@@ -181,9 +181,12 @@ class Messg:
 
         msg = 'Вы успешно зарегистрированы!'
         self.SendMessage(peerid, msg, 3)
-        lastRegData = self.GetUserDataFromSubscriptions(peerid)[-1]
-        self.InsertIntoPlate(lastRegData[1], lastRegData[2], lastRegData[3])
-        self.onetimeschedule(peerid, lastRegData[1], lastRegData[2], lastRegData[3])
+        cmd = "SELECT plate, class, parameter FROM subscriptions WHERE id=%d AND parameter = '%s'" % (peerid, Parameter)
+        self.c.execute(cmd)
+        lastRegData = self.c.fetchone()
+        print(lastRegData)
+        self.InsertIntoPlate(lastRegData[0], lastRegData[1], lastRegData[2])
+        self.onetimeschedule(peerid, lastRegData[0], lastRegData[1], lastRegData[2])
 
 
 
@@ -200,9 +203,7 @@ class Messg:
         cmd = "SELECT plate, class FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
         self.c.execute(cmd)
         result = self.c.fetchone()
-        print(result)
         if (result != None):
-            print("Result isn't none")
             self.DeleteFromPlate(result[0], result[1], parameter)
 
         cmd = "DELETE FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
@@ -297,7 +298,6 @@ class Messg:
         cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" %(plate, parameter, Class)
         self.c.execute(cmd)
         result = self.c.fetchone()
-        print(result)
         if(result == None):
             cmd = "INSERT INTO subscriptions_info_%d(subscription_count, class, parameter) VALUES(1, '%s', '%s')" % (plate, Class, parameter)
             self.c.execute(cmd)
@@ -308,7 +308,6 @@ class Messg:
             self.conn.commit()
 
     def DeleteFromPlate(self, plate, Class, parameter):
-        print(plate)
         cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" % (int(plate), parameter, Class)
         self.c.execute(cmd)
         result = self.c.fetchone()

@@ -282,7 +282,7 @@ class Parser:
 
             if first_time:
                 self.c.execute(
-                    "UPDATE subscriptions_info_1 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}' and subscription_count=1)".format(
+                    "UPDATE subscriptions_info_2 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}' and subscription_count=1)".format(
                         'a' + str(self.date_conversion(table[0].text)).replace("-", ""), html,
                         class_, parameter))
                 self.conn.commit()

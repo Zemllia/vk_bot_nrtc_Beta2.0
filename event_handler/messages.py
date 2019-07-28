@@ -1,20 +1,20 @@
 import json
 import LogManager,config
 import random
-from datetime import datetime
 import psycopg2
 import apiai
-
-from threading import Thread
+from flask import Flask, request
+import logging
 
 #Все для вк! Моря и ААААКеаны, все для вк!! ДЛЯЯЯ ВВВВВКККККК (Все библеотеки для вк)
 import vk_api
 
+app = Flask(__name__)
 
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 class Messg:
-    from vk_api.longpoll import VkEventType
-    from vk_api.bot_longpoll import VkBotEventType
     def __init__(self, onetimeschedulefunc):
         self.vk_session = vk_api.VkApi(token=config.vk_token)
         from vk_api.longpoll import VkLongPoll
@@ -46,20 +46,21 @@ class Messg:
         self.addNewUser(peerid)
         msgeLower = msge.lower()
         if msgeLower == "регистрация":
-            if(self.GetUserState(peerid) == ""):
+            if self.GetUserState(peerid) == "":
                 msg = "Вы уже проходите регистрацию"
                 state = self.GetUserState(peerid)
                 keyboardInt = 0
-                if(state == "setplate"):
+                if state == "setplate":
                     keyboardInt = 4
-                elif(state == "setclass"):
+                elif state == "setclass":
                     keyboardInt = 2
-                elif(state == "setParameter"):
+                elif state == "setParameter":
                     keyboardInt = 0
                 self.SendMessage(peerid, msg, keyboardInt)
             else:
                 self.StartRegistration(peerid)
-                LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Запрос на регистрацию от %s(%d), peerid = ' % (self.GetName(peerid, 'nom'), peerid))
+                # LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Запрос на регистрацию
+                # от %s(%d), peerid = ' % (self.GetName(peerid, 'nom'), peerid))
 
         elif msgeLower == 'удалить профиль':
             cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('deleting', peerid)
@@ -97,27 +98,24 @@ class Messg:
                 msg = 'Главное меню'
                 self.SendMessage(peerid, msg, 3)
 
-
         else:
             state = self.GetUserState(peerid)[0]
-            if(state == "setplate"):
+            if state == "setplate":
                 self.SetPlate(peerid, msgeLower)
-            elif(state == "setclass"):
+            elif state == "setclass":
                 self.SetClass(peerid, msgeLower)
-            elif(state == "setparameter"):
+            elif state == "setparameter":
                 self.SetParameter(peerid, msge)
-            elif(state == "deleting"):
-                self.DeleteUser(peerid, msgeLower)
+            elif state == "deleting":
+                self.DeleteUser(peerid, msge)
             else:
                 self.TalkWithBot(peerid, msge)
-
-
 
     def StartRegistration(self, peerid):
         cmd = "INSERT INTO subscriptions(id) VALUES (%d)" % (peerid)
         self.c.execute(cmd)
         self.conn.commit()
-        #Переход к сл. шагу и отсылка сл. требований
+        # Переход к сл. шагу и отсылка сл. требований
         cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('setplate', peerid)
         self.c.execute(cmd)
         self.conn.commit()
@@ -125,7 +123,6 @@ class Messg:
         self.SendMessage(peerid, msg, 4)
 
     def SetPlate(self, peerid, plate):
-        #intPlate = 0
         plate = plate.replace("(на шапошникова)", "")
         plate = plate.replace("(на студенческой)", "")
         if plate == 'первая' or plate == 'вторая':
@@ -155,7 +152,8 @@ class Messg:
                 self.SendMessage(peerid, msg, 0)
             else:
                 Class = "student"
-                msg = 'Укажите Группу, например 2ПКС-17-1к (Довольно важно указать в таком виде, иначе могут появиться некоторые проблемы, в будущем обязательно сделаем удобнее)'
+                msg = 'Укажите Группу, например 2ПКС-17-1к (Довольно важно указать в таком виде, иначе могут ' \
+                      'появиться некоторые проблемы, в будущем обязательно сделаем удобнее)'
                 self.SendMessage(peerid, msg, 0)
 
             cmd = "UPDATE subscriptions SET class = '%s' WHERE id = %d AND class IS null" % (Class, peerid)
@@ -169,8 +167,8 @@ class Messg:
             errorMessage = 'Пожалуйста укажите кто вы правильно: "Преподаватель" или "Студент"'
             self.SendMessage(peerid, errorMessage, 2)
 
-    def SetParameter(self, peerid, Parameter):
-        #TODO Список всех групп и преподавателей, поиск по нему и вывод совпадений
+    def SetParameter(self, peerid, Parameter, plate):
+        # TODO Список всех групп и преподавателей, поиск по нему и вывод совпадений/Улучшить проверку площадки!
         cmd = "UPDATE subscriptions SET parameter = '%s' WHERE id = %d AND parameter IS null" % (Parameter, peerid)
         self.c.execute(cmd)
         self.conn.commit()
@@ -187,8 +185,6 @@ class Messg:
         print(lastRegData)
         isFirstTime=self.InsertIntoPlate(lastRegData[0], lastRegData[1], lastRegData[2])
         self.onetimeschedule(peerid, lastRegData[0], lastRegData[1], lastRegData[2], first_time=isFirstTime)
-
-
 
     def DestroyInRegistration(self, peerid):
         cmd = "DELETE FROM subscriptions WHERE id=%d AND parameter IS NULL" % peerid
@@ -210,8 +206,7 @@ class Messg:
             self.c.execute(cmd)
             self.conn.commit()
 
-            self.SendMessage(peerid, "Профиль " + str(parameter) + (" успешно удален"), 3)
-
+            self.SendMessage(peerid, "Профиль " + str(parameter) + " успешно удален", 3)
         else:
             self.SendMessage(peerid, "Вы не подписаны на профиль " + str(parameter), 3)
 
@@ -243,15 +238,16 @@ class Messg:
         }])
         with open(str(peerid)+'.json', 'w', encoding='utf-8') as outfile:
             json.dump(
-                data, outfile,ensure_ascii=False
+                data, outfile, ensure_ascii=False
             )
 
     def addNewUser(self, peerid):
         cmd = "SELECT id FROM users WHERE id = %d" % (int(peerid))
         self.c.execute(cmd)
         result = self.c.fetchone()
-        if result == None:
-            LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Добавил пользователя %s(%d) в таблицу Users' % (self.GetName(peerid, 'nom'), peerid))
+        if result is None:
+            # LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Добавил пользователя
+            # %s(%d) в таблицу Users' % (self.GetName(peerid, 'nom'), peerid))
             cmd = "INSERT INTO users(id, status) VALUES (%d, '')" % (int(peerid))
             self.c.execute(cmd)
             self.conn.commit()
@@ -265,58 +261,42 @@ class Messg:
         )
 
     def TalkWithBot(self, peerid, message):
-        request = apiai.ApiAI('2ec1776470d340a5a793ff5afa92b63b').text_request()  # Токен API к Dialogflow
-        request.lang = 'ru'  # На каком языке будет послан запрос
-        request.session_id = 'BatlabAIBot'  # ID Сессии диалога (нужно, чтобы потом учить бота)
-        request.query = message  # Посылаем запрос к ИИ с сообщением от юзера
-        responseJson = json.loads(request.getresponse().read().decode('utf-8'))
-        response = responseJson['result']['fulfillment']['speech']
+        requestfromgoogle = apiai.ApiAI('2ec1776470d340a5a793ff5afa92b63b').text_request()  # Токен API к Dialogflow
+        requestfromgoogle.lang = 'ru'  # На каком языке будет послан запрос
+        requestfromgoogle.session_id = 'BatlabAIBot'  # ID Сессии диалога (нужно, чтобы потом учить бота)
+        requestfromgoogle.query = message  # Посылаем запрос к ИИ с сообщением от юзера
+        responsejson = json.loads(requestfromgoogle.getresponse().read().decode('utf-8'))
+        response = responsejson['result']['fulfillment']['speech']
 
         if response:
             self.SendMessage(peerid, response, 3)
         else:
             self.SendMessage(peerid, "Я вас не понял", 3)
 
-    def chk(self):
-        while True:
-            for event in self.blongpoll.listen():
-                if event.type == self.VkBotEventType.MESSAGE_NEW:
-                    peerid = event.raw['object']['peer_id']
-                    msge = event.raw['object']['text']
-                    time = self.GetTime()
-                    if event.from_user:
-                        name = self.GetName(peerid, 'nom')
-                        LogManager.AddLog(time + '  ' + self.GetName(peerid, 'nom') + '(' + str(peerid) + '): ' + msge)
-                        self.checkMessage(msge=msge, peerid=peerid)
-                    else:
-                        if '[club170013824|@nrtkbotvk] ' in msge:
-                            msge= msge.replace('[club170013824|@nrtkbotvk] ', '')
-                        elif '[club170013824|расписание нртк] ' in msge:
-                            msge = msge.replace('[club170013824|расписание нртк] ', '')
-
-                        LogManager.AddLog(time + '  ' + self.GetName(peerid, 'nom') + '(' + str(peerid) + '): ' + msge)
-                        self.checkMessage(msge=msge, peerid=peerid)
-
     def InsertIntoPlate(self, plate, Class, parameter):
         cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" %(plate, parameter, Class)
         self.c.execute(cmd)
         result = self.c.fetchone()
-        if(result == None):
+        if result == None:
             cmd = "INSERT INTO subscriptions_info_%d(subscription_count, class, parameter) VALUES(1, '%s', '%s')" % (plate, Class, parameter)
             self.c.execute(cmd)
             self.conn.commit()
             return True
         else:
-            cmd = "UPDATE subscriptions_info_%d SET subscription_count = %d WHERE parameter = '%s' AND class = '%s'" % (plate, result[0] + 1, parameter, Class)
+            cmd = "UPDATE subscriptions_info_%d SET subscription_count = %d WHERE parameter = '%s' AND class = '%s'" % (
+                plate, result[0] + 1, parameter, Class
+            )
             self.c.execute(cmd)
             self.conn.commit()
             return False
 
     def DeleteFromPlate(self, plate, Class, parameter):
-        cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" % (int(plate), parameter, Class)
+        cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" % (
+            int(plate), parameter, Class
+        )
         self.c.execute(cmd)
         result = self.c.fetchone()
-        if (result[0] == 1):
+        if result[0] == 1:
             cmd = "DELETE FROM subscriptions_info_%d WHERE class = '%s' AND parameter = '%s'" % (int(plate), Class, parameter)
             self.c.execute(cmd)
             self.conn.commit()
@@ -324,20 +304,6 @@ class Messg:
             cmd = "UPDATE subscriptions_info_%d SET subscription_count = %d WHERE parameter = '%s' AND class = '%s'" % (int(plate), result[0] - 1, parameter, Class)
             self.c.execute(cmd)
             self.conn.commit()
-
-    def GetName(self,peerid, name_case):
-        if(peerid < 2000000001):
-            name = self.vk.users.get(user_id=peerid, fields = 'nickname', name_case=name_case)
-            name = str(name[0]['first_name']) + ' '+ str(name[0]['last_name'])
-            return name
-        else:
-            name = self.vk._method("messages.getChat", {"chat_id": peerid})
-            return "Беседа"
-
-
-    def GetTime(self):
-        time = datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S")
-        return time
 
     def GetUserState(self, peerid):
         cmd = "SELECT status FROM users WHERE id = %d" % (int(peerid))
@@ -351,6 +317,38 @@ class Messg:
         result = self.c.fetchall()
         return result
 
-    def Start(self):
-        self.chk()
+
+messg = None
+
+def Start(onetimeschedule):
+    global messg
+    messg = Messg(onetimeschedule)
+    app.run(debug=False, host='192.168.0.4', port=80)
+
+@app.route('/', methods=['POST'])
+def ReturnAnswer():
+    # Не забудь на основном боте поставит секретный ключ для колбэкапи
+    data = json.loads(request.data)
+    print(data)
+    type = data['type']
+    object = data['object']
+    if data['secret'] == config.callbackapi_secret_key:
+        # time = datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S")
+        if type == 'message_new':
+            peer_id = object['peer_id']
+            msg = object['text']
+            if peer_id < 2000000000:
+                # name = Messg(onetimes).GetName(peer_id, 'nom')
+                # LogManager.AddLog(time + '  ' + name + '(' + str(peer_id) + '): ' + msg)
+                messg.checkMessage(msg, peer_id)
+            else:
+                if '[club170013824|@nrtkbotvk] ' in msg:
+                    msg = msg.replace('[club170013824|@nrtkbotvk] ', '')
+                elif '[club170013824|расписание нртк] ' in msg:
+                    msg = msg.replace('[club170013824|расписание нртк] ', '')
+                messg.checkMessage(msg, peer_id)
+                # LogManager.AddLog(time + '  ' + 'Беседа' + '(' + str(peer_id) + '): ' + msg)
+    print('Ok')
+    return 'ok'
+
 

@@ -24,6 +24,6 @@ def one_time_schedule(user_id, plate, class_, parameter, first_time=False):
         Parser2.single(user_id, class_, parameter, first_time)
 
 
-messager = messages.Messg(one_time_schedule)
+messager = messages.Start(one_time_schedule)
 messager.Start()
 

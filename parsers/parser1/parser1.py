@@ -95,7 +95,7 @@ class Parser:
             if date != datetime.date.today():
                 tables.append(table)
                 dates.append(date)
-                self.archive[date] = {}
+                self.archive[date] = {'student':{}, 'teacher':{}}
 
         self.column_control(dates)
 
@@ -309,21 +309,20 @@ class Parser:
 
         try:
             # Проверка наличия в памяти
-            picture, html = self.archive[date][parameter]
+            picture, html = self.archive[date][class_][parameter]
 
         except:
             # Составление HTML и запись в память
             if class_ == 'student':
                 html = self.assembly_student(table, parameter)
-                picture = imgkit.from_string(html, False)
-                picture = functions.photo_upload(picture)
-                self.archive[date][parameter] = [picture, html]
+
 
             elif class_ == 'teacher':
                 html = self.assembly_teacher(table, parameter)
-                picture = imgkit.from_string(html, False)
-                picture = functions.photo_upload(picture)
-                self.archive[date][parameter] = [picture, html]
+
+            picture = imgkit.from_string(html, False)
+            picture = functions.photo_upload(picture)
+            self.archive[date][class_][parameter] = [picture, html]
 
         return picture, html
 
@@ -355,18 +354,23 @@ class Parser:
                     'a'+str(self.date_conversion(table[1].text)).replace("-", "")))
 
                 for line in self.c.fetchall():
-                    picture, html = self.create_or_query(table, line[0], line[1])
-                    self.c.execute("SELECT * FROM subscriptions WHERE (plate=1 and class='{}' and parameter='{}')".format(
-                        line[0], line[1]))
+                    def flow(table, line):
+                        picture, html = self.create_or_query(table, line[0], line[1])
 
-                    if line[2] != html:
-                        for user in self.c.fetchall():
-                            self.Sender(user[0], attachment=picture)
+                        if line[2] != html:
+                            self.c.execute(
+                                "SELECT * FROM subscriptions WHERE (plate=1 and class='{}' and parameter='{}')".format(
+                                    line[0], line[1]))
 
-                        self.c.execute("UPDATE subscriptions_info_1 SET {} = '{}' WHERE (class='{}' and parameter='{}')".format(
-                            'a'+str(self.date_conversion(table[1].text)).replace("-", ""), html,
-                            line[0], line[1]))
-                        self.conn.commit()
+                            for user in self.c.fetchall():
+                                self.Sender(user[0], attachment=picture)
+
+                            self.c.execute("UPDATE subscriptions_info_1 SET {} = '{}' WHERE (class='{}' and parameter='{}')".format(
+                                'a'+str(self.date_conversion(table[1].text)).replace("-", ""), html,
+                                line[0], line[1]))
+                            self.conn.commit()
+
+                Thread(target=flow, args=(table, line)).start()
 
     def start(self):
         auto_mailing = Thread(target=self.auto_mailing, name='auto_mailing_parser1')

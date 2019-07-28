@@ -121,11 +121,11 @@ class Parser:
             elif 'Замена в расписании' in trs[line_number].text:
 
                 tables.append(trs[table_upper_bound:line_number])
-                self.archive[self.date_conversion(trs[table_upper_bound].text)] = {}
+                self.archive[self.date_conversion(trs[table_upper_bound].text)] = {'student':{}, 'teacher':{}}
                 table_upper_bound = line_number
         else:
             tables.append(trs[table_upper_bound:line_number])
-            self.archive[self.date_conversion(trs[table_upper_bound].text)] = {}
+            self.archive[self.date_conversion(trs[table_upper_bound].text)] = {'student':{}, 'teacher':{}}
 
         self.column_control(list(self.archive.keys()))
         self.tables = tables
@@ -176,7 +176,6 @@ class Parser:
         return date
 
     def assembly_student(self, day, parameter):
-
         averaged_parameter = self.averaged_parameter('student', parameter)
 
         result = '<body>' + str(self.head) + '</body>'
@@ -251,21 +250,19 @@ class Parser:
 
         try:
             # Проверка наличия в памяти
-            picture, html = self.archive[date][parameter]
+            picture, html = self.archive[date][class_][parameter]
 
         except:
             # Составление HTML и запись в память
             if class_ == 'student':
                 html = self.assembly_student(table, parameter)
-                picture = imgkit.from_string(html, False)
-                picture = functions.photo_upload(picture)
-                self.archive[date][parameter] = [picture, html]
 
             elif class_ == 'teacher':
                 html = self.assembly_teacher(table, parameter)
-                picture = imgkit.from_string(html, False)
-                picture = functions.photo_upload(picture)
-                self.archive[date][parameter] = [picture, html]
+
+            picture = imgkit.from_string(html, False)
+            picture = functions.photo_upload(picture)
+            self.archive[date][class_][parameter] = [picture, html]
 
         return picture, html
 
@@ -282,7 +279,8 @@ class Parser:
 
             if first_time:
                 self.c.execute(
-                    "UPDATE subscriptions_info_2 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}' and subscription_count=1)".format(
+                    "UPDATE subscriptions_info_2 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}' "
+                    "and subscription_count=1)".format(
                         'a' + str(self.date_conversion(table[0].text)).replace("-", ""), html,
                         class_, parameter))
                 self.conn.commit()
@@ -297,19 +295,23 @@ class Parser:
                     'a'+str(self.date_conversion(table[0].text)).replace("-", "")))
 
                 for line in self.c.fetchall():
-                    picture, html = self.create_or_query(table, line[0], line[1])
-                    self.c.execute("SELECT * FROM subscriptions WHERE (plate=2 and class='{}' and parameter='{}')".format(
-                        line[0], line[1]))
 
-                    if line[2] != html:
-                        for user in self.c.fetchall():
-                            self.Sender(user[0], attachment=picture)
+                    def flow(table, line):
+                        picture, html = self.create_or_query(table, line[0], line[1])
+                        self.c.execute("SELECT * FROM subscriptions WHERE (plate=2 and class='{}'"
+                                       "and parameter='{}')".format(line[0], line[1]))
 
-                        self.c.execute(
-                            "UPDATE subscriptions_info_2 SET {} = '{}' WHERE (class='{}' and parameter='{}')".format(
-                                'a'+str(self.date_conversion(table[0].text)).replace("-", ""), html,
-                                line[0], line[1]))
-                        self.conn.commit()
+                        if line[2] != html:
+                            for user in self.c.fetchall():
+                                self.Sender(user[0], attachment=picture)
+
+                            self.c.execute(
+                                "UPDATE subscriptions_info_2 SET {} = '{}' WHERE (class='{}' and parameter='{}')".format(
+                                    'a'+str(self.date_conversion(table[0].text)).replace("-", ""), html,
+                                    line[0], line[1]))
+                            self.conn.commit()
+
+                    Thread(target=flow, args=(table, line)).start()
 
     def start(self):
         auto_mailing = Thread(target=self.auto_mailing, name='auto_mailing_parser2')
@@ -325,10 +327,10 @@ if __name__ == '__main__':
     Parser1 = Parser(Sender.add)
     Parser1.start()
 
-    time.sleep(1)
+    time.sleep(10)
 
     user_id = 265868386
     class_ = 'teacher'
-    parameter = 'Бичинова К.М.'
+    parameter = 'sd'
 
     Parser1.single(user_id, class_, parameter, first_time=True)

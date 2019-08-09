@@ -85,6 +85,18 @@ class Messg:
                 for item in listOfUserGroups:
                     self.onetimeschedule(peerid, item[1], item[2], item[3])
 
+        elif msgeLower == "расписане на":
+            msg = 'Пожалуйста укажите площадку: "Первая" или "Вторая"'
+            self.SendMessage(peerid, msg, 3)
+            cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('onetime_setplate', peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
+
+            cmd = "INSERT INTO onetimeschedule(id) VALUES (%d)" % peerid
+            self.c.execute(cmd)
+            self.conn.commit()
+
+
         elif msgeLower == "команды":
             msg = 'Меню команд'
             self.SendMessage(peerid, msg, 1)
@@ -102,6 +114,7 @@ class Messg:
 
         else:
             state = self.GetUserState(peerid)[0]
+            # Если статус == установить площадку, то берем и записываем данные из сообщения в базу с помощью метода и т.д
             if state == "setplate":
                 self.SetPlate(peerid, msgeLower)
             elif state == "setclass":
@@ -110,6 +123,12 @@ class Messg:
                 self.SetParameter(peerid, msge)
             elif state == "deleting":
                 self.DeleteUser(peerid, msge)
+            elif state == 'onetime_setplate':
+                self.OnetimeSetPlate(peerid, msgeLower)
+            elif state == 'onetime_setclass':
+                self.OnetimeSetClass(peerid, msgeLower)
+            elif state == 'onetime_setparameter':
+                self.OnetimeSetParameter(peerid, msge)
             else:
                 self.TalkWithBot(peerid, msge)
 
@@ -171,7 +190,7 @@ class Messg:
 
     def SetParameter(self, peerid, Parameter):
         # TODO Список всех групп и преподавателей, поиск по нему и вывод совпадений
-        cmd = "SELECT plate, class, parameter FROM subscriptions WHERE id=%d AND parameter IS NULL" % peerid
+        cmd = "SELECT plate, class FROM subscriptions WHERE id=%d AND parameter IS NULL" % peerid
         self.c.execute(cmd)
         lastRegData = self.c.fetchone()
 
@@ -189,6 +208,69 @@ class Messg:
         isFirstTime = self.InsertIntoPlate(lastRegData[0], lastRegData[1], Parameter)
         self.onetimeschedule(peerid, lastRegData[0], lastRegData[1], Parameter, first_time=isFirstTime)
 
+
+    def OnetimeSetPlate(self, peerid, plate):
+        plate = plate.replace("(на шапошникова)", "")
+        plate = plate.replace("(на студенческой)", "")
+        if plate == 'первая' or plate == 'вторая':
+            if plate == 'первая':
+                intPlate = 1
+            else:
+                intPlate = 2
+            cmd = "UPDATE onetimeschedule SET plate = %d WHERE id = %d AND plate IS null" % (intPlate, peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
+            # Ставим state на указание class
+            cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('onetime_setclass', peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
+            # Отправка сообщения с просьбой о введении class
+            msg = 'Укажите кто вы: "Преподаватель" или "Студент"'
+            self.SendMessage(peerid, msg, 2)
+        else:
+            errorMessage = "Пожалуйста укажите площадку правильно: 'Первая' или 'Вторая'"
+            self.SendMessage(peerid, errorMessage, 4)
+
+
+    def OnetimeSetClass(self, peerid, Class):
+        if Class == "преподаватель" or Class == "студент":
+            if Class == "преподаватель":
+                Class = "teacher"
+                msg = 'Укажите ФИО, например Базин Е.С.'
+                self.SendMessage(peerid, msg, 0)
+            else:
+                Class = "student"
+                msg = 'Укажите Группу, например 2ПКС-17-1к (Довольно важно указать в таком виде, иначе могут ' \
+                      'появиться некоторые проблемы, в будущем обязательно сделаем удобнее)'
+                self.SendMessage(peerid, msg, 0)
+
+            cmd = "UPDATE onetimeschedule SET class = '%s' WHERE id = %d AND class IS null" % (Class, peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
+
+            cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('onetime_setparameter', peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
+        else:
+            errorMessage = 'Пожалуйста укажите кто вы правильно: "Преподаватель" или "Студент"'
+            self.SendMessage(peerid, errorMessage, 2)
+
+
+    def OnetimeSetParameter(self, peerid, parameter):
+        cmd = "SELECT (plate, class) FROM onetimeschedule WHERE id=%d" % peerid
+        self.c.execute(cmd)
+        result = self.c.fetchone()
+
+        self.onetimeschedule(peerid, result[0], result[1], parameter)
+
+        cmd = "DELETE FROM onetimeschedule WHERE id = %d" % peerid
+        self.c.execute(cmd)
+        self.conn.commit()
+
+        cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
+        self.c.execute(cmd)
+        self.conn.commit()
+
     def DestroyInRegistration(self, peerid):
         cmd = "DELETE FROM subscriptions WHERE id=%d AND parameter IS NULL" % peerid
         self.c.execute(cmd)
@@ -197,6 +279,7 @@ class Messg:
         cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
         self.c.execute(cmd)
         self.conn.commit()
+
 
     def DeleteUser(self, peerid, parameter):
         cmd = "SELECT plate, class FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
@@ -216,6 +299,7 @@ class Messg:
         cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
         self.c.execute(cmd)
         self.conn.commit()
+
 
     def generateJSONToDelete(self, peerid):
         self.c.execute('SELECT parameter FROM subscriptions WHERE id=%d' % peerid)
@@ -244,6 +328,7 @@ class Messg:
                 data, outfile, ensure_ascii=False
             )
 
+
     def addNewUser(self, peerid):
         cmd = "SELECT id FROM users WHERE id = %d" % (int(peerid))
         self.c.execute(cmd)
@@ -255,6 +340,7 @@ class Messg:
             self.c.execute(cmd)
             self.conn.commit()
 
+
     def SendMessage(self, peerid, mesg, keyboard):
         self.vk.messages.send(
             peer_id=peerid,
@@ -262,6 +348,7 @@ class Messg:
             keyboard=open(self.keyBoardList[keyboard], "r", encoding="UTF-8").read(),
             random_id=self.random_id()
         )
+
 
     def TalkWithBot(self, peerid, message):
         request_from_google = apiai.ApiAI('2ec1776470d340a5a793ff5afa92b63b').text_request()  # Токен API к Dialogflow
@@ -275,6 +362,7 @@ class Messg:
             self.SendMessage(peerid, response, 3)
         else:
             self.SendMessage(peerid, "Я вас не понял", 3)
+
 
     def InsertIntoPlate(self, plate, Class, parameter):
         cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" % (
@@ -300,6 +388,7 @@ class Messg:
             self.conn.commit()
             return False
 
+
     def DeleteFromPlate(self, plate, Class, parameter):
         cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" % (
             int(plate), parameter, Class
@@ -323,11 +412,13 @@ class Messg:
             self.c.execute(cmd)
             self.conn.commit()
 
+
     def GetUserState(self, peerid):
         cmd = "SELECT status FROM users WHERE id = %d" % (int(peerid))
         self.c.execute(cmd)
         state = self.c.fetchone()
         return state
+
 
     def GetUserDataFromSubscriptions(self, peerid):
         cmd = "SELECT * FROM subscriptions WHERE id=%d" % peerid

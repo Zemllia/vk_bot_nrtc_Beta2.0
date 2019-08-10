@@ -26,9 +26,7 @@ class Parser:
                                     host=config.host,
                                     database=config.database,
                                     user=config.user,
-                                    password=config.password
-                                    )
-        self.c = self.conn.cursor()
+                                    password=config.password)
 
         self.html = ''
         self.date = 0
@@ -36,27 +34,28 @@ class Parser:
 
     # Упровлеие колоками добавлеие удалеие дней
     def column_control(self, dates):
+        c = self.conn.cursor()
 
         for i in range(len(dates)):
             dates[i] = 'a'+str(dates[i]).replace("-", "")
 
         dates = [dates, []]
         # Запрос колонок
-        self.c.execute("SELECT * FROM information_schema.columns WHERE table_name = 'subscriptions_info_1'")
-        for i in self.c.fetchall():
+        c.execute("SELECT * FROM information_schema.columns WHERE table_name = 'subscriptions_info_1'")
+        for i in c.fetchall():
             dates[1].append(i[3])
         dates[1] = dates[1][3:]
 
         # Добавление колонок
         for i in dates[0]:
             if not i in dates[1]:
-                self.c.execute("ALTER TABLE subscriptions_info_1 ADD {} TEXT".format(i))
+                c.execute("ALTER TABLE subscriptions_info_1 ADD {} TEXT".format(i))
                 self.conn.commit()
 
         # Удаление колонок
         for i in dates[1]:
             if not i in dates[0]:
-                self.c.execute("ALTER TABLE subscriptions_info_1 DROP {}".format(i))
+                c.execute("ALTER TABLE subscriptions_info_1 DROP {}".format(i))
                 self.conn.commit()
 
     # обновляет ВСЕ
@@ -152,7 +151,7 @@ class Parser:
                     html = self.html
                     break
 
-                if str(html) != self.html and str(html).find('</html>') >= 0:
+                if str(html) != self.html and '</html>' in str(html):
                     with open("site.html", "w", encoding="utf8") as f:
                         f.write(html)
                     break
@@ -202,7 +201,7 @@ class Parser:
         trs = table[3:]
 
         for i in range(len(trs)):
-            if self.averaged_parameter('student', trs[i].text).find(averaged_parameter) > 0 and not switch and trs[i].findAll(
+            if averaged_parameter in self.averaged_parameter('student', trs[i].text) and not switch and trs[i].findAll(
                     'td', attrs=self.signs_boundaries):
                 result += str(trs[i])
                 switch = True
@@ -246,7 +245,7 @@ class Parser:
             if not len(tr[i].findAll("td", self.signs_boundaries)) == 0:
                 upper_bound = i
 
-            elif self.averaged_parameter('teacher', tr[i].text).find(averaged_parameter) >= 0:
+            elif averaged_parameter in self.averaged_parameter('teacher', tr[i].text):
                 try:
                     number = int(tr[i].findAll("td")[3].text)
 
@@ -268,13 +267,13 @@ class Parser:
                         break
 
                     elif switch:
-                        if self.averaged_parameter('teacher', tr[i].text).find(averaged_parameter) >= 0:
+                        if averaged_parameter in self.averaged_parameter('teacher', tr[i].text):
                             x = '<tr>'
 
                             for td in tr[i].findAll('td'):
-                                if self.averaged_parameter('teacher', td.text).find(averaged_parameter) >= 0:
+                                if averaged_parameter in self.averaged_parameter('teacher', td.text):
 
-                                    if str(td).find('bgcolor') >= 0:
+                                    if 'bgcolor' in td:
                                         y = str(td).split('bgcolor')
                                         x += y[0] + 'bgcolor="#FFCA33"' + y[1][10::]
 
@@ -328,6 +327,7 @@ class Parser:
 
     # Одиноный запрос расписания
     def single(self, user_id, class_, parameter, first_time):
+
         # Перебор таблиц
         if self.tables == []:
             self.Sender(user_id, message='Нет актуального расписания для {}.'.format(parameter))
@@ -338,39 +338,44 @@ class Parser:
             self.Sender(user_id, attachment=picture)
 
             if first_time:
-                self.c.execute(
+                c = self.conn.cursor()
+
+                c.execute(
                     "UPDATE subscriptions_info_1 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}'and subscription_count=1)".format(
                     'a' + str(self.date_conversion(table[1].text)).replace("-", ""), html,
                     class_, parameter))
                 self.conn.commit()
 
     def auto_mailing(self):
+        c = self.conn.cursor()
+
         while True:
             html = self.pending_update()
             self.update(html)
 
             for table in self.tables:
-                self.c.execute("SELECT class, parameter, {} FROM subscriptions_info_1".format(
+                c.execute("SELECT class, parameter, {} FROM subscriptions_info_1".format(
                     'a'+str(self.date_conversion(table[1].text)).replace("-", "")))
 
-                for line in self.c.fetchall():
+                for line in c.fetchall():
                     def flow(table, line):
+                        c = self.conn.cursor()
                         picture, html = self.create_or_query(table, line[0], line[1])
 
                         if line[2] != html:
-                            self.c.execute(
+                            c.execute(
                                 "SELECT * FROM subscriptions WHERE (plate=1 and class='{}' and parameter='{}')".format(
                                     line[0], line[1]))
 
-                            for user in self.c.fetchall():
+                            for user in c.fetchall():
                                 self.Sender(user[0], attachment=picture)
 
-                            self.c.execute("UPDATE subscriptions_info_1 SET {} = '{}' WHERE (class='{}' and parameter='{}')".format(
+                            c.execute("UPDATE subscriptions_info_1 SET {} = '{}' WHERE (class='{}' and parameter='{}')".format(
                                 'a'+str(self.date_conversion(table[1].text)).replace("-", ""), html,
                                 line[0], line[1]))
                             self.conn.commit()
 
-                Thread(target=flow, args=(table, line)).start()
+                    Thread(target=flow, args=(table, line)).start()
 
     def start(self):
         auto_mailing = Thread(target=self.auto_mailing, name='auto_mailing_parser1')
@@ -388,8 +393,8 @@ if __name__ == '__main__':
 
     user_id = 265868386
     class_ = 'student'
-    parameter = '2ПКС-17-1к'
+    parameter = '3ПКС-16-2'
 
-    time.sleep(1)
+    time.sleep(10)
 
     Parser1.single(user_id, class_, parameter, first_time=True)

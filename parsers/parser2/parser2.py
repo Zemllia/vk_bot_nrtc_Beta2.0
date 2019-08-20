@@ -54,7 +54,7 @@ class Parser:
                 """
 
         self.cap = """
-                <tr bgcolor="#F1A904">
+                <tr bgcolor="#A9A9A9">
                     <td><div align="center"><font size="3">Группа</font></div></td>
                     <td><div align="center"><font size="3">1 пара</font></div></td>
                     <td><div align="center"><font size="3">каб.№</font></div></td>
@@ -119,12 +119,16 @@ class Parser:
 
             elif 'Замена в расписании' in trs[line_number].text:
 
-                tables.append(trs[table_upper_bound:line_number])
-                self.archive[self.date_conversion(trs[table_upper_bound].text)] = {'student':{}, 'teacher':{}}
+                # >=
+                if self.date_conversion(trs[table_upper_bound].text) != datetime.date.today():
+                    tables.append(trs[table_upper_bound:line_number])
+                    self.archive[self.date_conversion(trs[table_upper_bound].text)] = {'student': {}, 'teacher': {}}
                 table_upper_bound = line_number
         else:
-            tables.append(trs[table_upper_bound:line_number])
-            self.archive[self.date_conversion(trs[table_upper_bound].text)] = {'student':{}, 'teacher':{}}
+            # >=
+            if self.date_conversion(trs[table_upper_bound].text) != datetime.date.today():
+                tables.append(trs[table_upper_bound:line_number])
+                self.archive[self.date_conversion(trs[table_upper_bound].text)] = {'student': {}, 'teacher': {}}
 
         self.column_control(list(self.archive.keys()))
         self.tables = tables
@@ -184,7 +188,7 @@ class Parser:
 
         result +=  '<tbody>'
         result += """
-        <tr bgcolor="#F1A904">
+        <tr bgcolor="#A9A9A9">
             <td colspan="16"><div align="center"><font size="6">%s</font></div></td>
         </tr>
         """ % day[0].text
@@ -215,7 +219,7 @@ class Parser:
 
         result += '<tbody>'
         result += """
-                <tr bgcolor="#F1A904">
+                <tr bgcolor="#A9A9A9">
                     <td colspan="16"><div align="center"><font size="6">%s</font></div></td>
                 </tr>
                 """ % day[0].text

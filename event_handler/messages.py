@@ -48,21 +48,27 @@ class Messg:
         self.addNewUser(peerid)
         msgeLower = msge.lower()
         if msgeLower == "регистрация":
-            if self.GetUserState(peerid) == "":
-                msg = "Вы уже проходите регистрацию"
-                state = self.GetUserState(peerid)
-                keyboardInt = 0
-                if state == "setplate":
-                    keyboardInt = 4
-                elif state == "setclass":
-                    keyboardInt = 2
-                elif state == "setParameter":
+            cmd = "SELECT parameter FROM subscriptions WHERE id=%d" % peerid
+            self.c.execute(cmd)
+            result = self.c.fetchall()
+            if(len(result) < 10):
+                if self.GetUserState(peerid) == "":
+                    msg = "Вы уже проходите регистрацию"
+                    state = self.GetUserState(peerid)
                     keyboardInt = 0
-                self.SendMessage(peerid, msg, keyboardInt)
+                    if state == "setplate":
+                        keyboardInt = 4
+                    elif state == "setclass":
+                        keyboardInt = 2
+                    elif state == "setParameter":
+                        keyboardInt = 0
+                    self.SendMessage(peerid, msg, keyboardInt)
+                else:
+                    self.StartRegistration(peerid)
+                    # LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Запрос на регистрацию
+                    # от %s(%d), peerid = ' % (self.GetName(peerid, 'nom'), peerid))
             else:
-                self.StartRegistration(peerid)
-                # LogManager.AddLog(datetime.strftime(datetime.now(), "%Y.%m.%d %H:%M:%S") + '  Запрос на регистрацию
-                # от %s(%d), peerid = ' % (self.GetName(peerid, 'nom'), peerid))
+                self.SendMessage(peerid, "Вы зарегистрировали максимальное количество подписок!", 3)
 
         elif msgeLower == 'удалить профиль':
             cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('deleting', peerid)
@@ -72,7 +78,7 @@ class Messg:
             self.vk.messages.send(
                 peer_id=peerid,
                 message="Укажите группу/преподавателя для удаления",
-                keyboard=open(str(peerid)+".json", "r", encoding="UTF-8").read(),
+                keyboard=open("JSONS_to_delete/" + str(peerid)+".json", "r", encoding="UTF-8").read(),
                 random_id=self.random_id()
             )
 
@@ -85,9 +91,9 @@ class Messg:
                 for item in listOfUserGroups:
                     self.onetimeschedule(peerid, item[1], item[2], item[3])
 
-        elif msgeLower == "расписане на":
+        elif msgeLower == "расписание на":
             msg = 'Пожалуйста укажите площадку: "Первая" или "Вторая"'
-            self.SendMessage(peerid, msg, 3)
+            self.SendMessage(peerid, msg, 4)
             cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('onetime_setplate', peerid)
             self.c.execute(cmd)
             self.conn.commit()
@@ -257,10 +263,10 @@ class Messg:
 
 
     def OnetimeSetParameter(self, peerid, parameter):
-        cmd = "SELECT (plate, class) FROM onetimeschedule WHERE id=%d" % peerid
+        cmd = "SELECT plate, class FROM onetimeschedule WHERE id=%d" % peerid
         self.c.execute(cmd)
         result = self.c.fetchone()
-
+        print(result[0])
         self.onetimeschedule(peerid, result[0], result[1], parameter)
 
         cmd = "DELETE FROM onetimeschedule WHERE id = %d" % peerid
@@ -426,6 +432,26 @@ class Messg:
         result = self.c.fetchall()
         return result
 
+    def DeleteAllFinaly(self, peerid):
+        cmd = "SELECT parameter FROM subscriptions WHERE id = %d" % peerid
+        self.c.execute(cmd)
+        result = self.c.fetchall()
+        print(result[0][0])
+        for parameter in result:
+            parameter = parameter[0]
+            cmd = "SELECT plate, class FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
+            self.c.execute(cmd)
+            result = self.c.fetchone()
+            if result is not None:
+                self.DeleteFromPlate(result[0], result[1], parameter)
+
+                cmd = "DELETE FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
+                self.c.execute(cmd)
+                self.conn.commit()
+
+            cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
 
 messg = None
 
@@ -459,5 +485,12 @@ def ReturnAnswer():
                     msg = msg.replace('[club170013824|расписание нртк] ', '')
                 messg.checkMessage(msg, peer_id)
                 # LogManager.AddLog(time + '  ' + 'Беседа' + '(' + str(peer_id) + '): ' + msg)
+        elif type == 'group_leave':
+            peer_id = object['user_id']
+            messg.SendMessage(peer_id, "Вы отписались от бота, ваш профиль полностью удален", 3)
+            messg.DeleteAllFinaly(peer_id)
+        elif type == 'message_deny':
+            peer_id = object['user_id']
+            messg.DeleteAllFinaly(peer_id)
     print('Ok')
     return 'ok'

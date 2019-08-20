@@ -195,7 +195,7 @@ class Parser:
         result += self.cap
 
         for line in day[2:]:
-            if averaged_parameter == self.averaged_parameter('student', line.findAll('td')[0].text):
+            if averaged_parameter in self.averaged_parameter('student', line.findAll('td')[0].text):
                 line = line.findAll('td')
                 result += '<tr>'
                 result += '<td bgcolor="#B3B3B3">%s</td>' % line[0].text

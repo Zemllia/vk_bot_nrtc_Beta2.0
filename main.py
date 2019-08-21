@@ -26,4 +26,3 @@ def one_time_schedule(user_id, plate, class_, parameter, first_time=False):
 
 messager = messages.Start(one_time_schedule)
 messager.Start()
-

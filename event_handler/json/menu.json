@@ -7,8 +7,15 @@
         "label": "Расписание"
       },
       "color": "positive"
-    },
-      {
+    }],
+    [{
+      "action": {
+        "type": "text",
+        "label": "Расписание на"
+      },
+      "color": "positive"
+    }],
+      [{
         "action": {
           "type": "text",
           "label": "Команды"

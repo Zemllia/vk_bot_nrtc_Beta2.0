@@ -246,8 +246,8 @@ class Messg:
                 self.SendMessage(peerid, msg, 0)
             else:
                 Class = "student"
-                msg = 'Укажите Группу, например 2ПКС-17-1к (Довольно важно указать в таком виде, иначе могут ' \
-                      'появиться некоторые проблемы, в будущем обязательно сделаем удобнее)'
+                msg = 'Укажите Группу, например 2ПКС-17-1к (Вы можете не указывать первую цифру (курс), тогда ' \
+                      'вам не надо будет регистрироваться при переходе на следующий курс)'
                 self.SendMessage(peerid, msg, 0)
 
             cmd = "UPDATE onetimeschedule SET class = '%s' WHERE id = %d AND class IS null" % (Class, peerid)
@@ -267,6 +267,7 @@ class Messg:
         self.c.execute(cmd)
         result = self.c.fetchone()
         print(result[0])
+        self.SendMessage(peerid, self.rand_phrases[random.randint(0, len(self.rand_phrases))], 3)
         self.onetimeschedule(peerid, result[0], result[1], parameter)
 
         cmd = "DELETE FROM onetimeschedule WHERE id = %d" % peerid
@@ -492,5 +493,5 @@ def ReturnAnswer():
         elif type == 'message_deny':
             peer_id = object['user_id']
             messg.DeleteAllFinaly(peer_id)
-    print('Ok')
+    print('ok')
     return 'ok'

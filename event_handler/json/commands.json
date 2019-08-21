@@ -7,27 +7,21 @@
         "label": "Регистрация"
       },
       "color": "positive"
-    },
-      {
+    }],
+      [{
         "action": {
           "type": "text",
           "label": "Удалить профиль"
         },
         "color": "positive"
-      },
-	  {
-        "action": {
-          "type": "text",
-          "label": "Помощь"
-        },
-        "color": "positive"
-      },
-	  {
+      }],
+	  [{
         "action": {
           "type": "text",
           "label": "Назад"
         },
         "color": "negative"
-      }]
+      }
+    ]
   ]
 }

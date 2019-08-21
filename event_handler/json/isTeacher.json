@@ -20,7 +20,7 @@
         "type": "text",
         "label": "Отмена"
       },
-      "color": "positive"
+      "color": "negative"
 	}]
   ]
 }

@@ -47,6 +47,10 @@ class Messg:
     def checkMessage(self, msge: str, peerid):
         self.addNewUser(peerid)
         msgeLower = msge.lower()
+        if self.GetUserState(peerid)[0] == "left":
+            self.SendMessage(peerid, "Сначала подпишитесь назад", 3)
+            return
+
         if msgeLower == "регистрация":
             cmd = "SELECT parameter FROM subscriptions WHERE id=%d" % peerid
             self.c.execute(cmd)
@@ -179,8 +183,8 @@ class Messg:
                 self.SendMessage(peerid, msg, 0)
             else:
                 Class = "student"
-                msg = 'Укажите Группу, например 2ПКС-17-1к (Довольно важно указать в таком виде, иначе могут ' \
-                      'появиться некоторые проблемы, в будущем обязательно сделаем удобнее)'
+                msg = 'Укажите Группу, например 2ПКС-17-1к (Вы можете не указывать первую цифру (курс), тогда ' \
+                      'вам не надо будет регистрироваться при переходе на следующий курс)'
                 self.SendMessage(peerid, msg, 0)
 
             cmd = "UPDATE subscriptions SET class = '%s' WHERE id = %d AND class IS null" % (Class, peerid)
@@ -196,23 +200,35 @@ class Messg:
 
     def SetParameter(self, peerid, Parameter):
         # TODO Список всех групп и преподавателей, поиск по нему и вывод совпадений
+
         cmd = "SELECT plate, class FROM subscriptions WHERE id=%d AND parameter IS NULL" % peerid
         self.c.execute(cmd)
         lastRegData = self.c.fetchone()
 
-        cmd = "UPDATE subscriptions SET parameter = '%s' WHERE id = %d AND parameter IS NULL" % (Parameter, peerid)
-        self.c.execute(cmd)
-        self.conn.commit()
+        self.c.execute("SELECT parameter, plate FROM subscriptions WHERE id = %d AND plate=%d AND parameter = '%s'" % (peerid, lastRegData[0], Parameter))
+        result = self.c.fetchall()
+        print(result)
 
-        cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
-        self.c.execute(cmd)
-        self.conn.commit()
+        if len(result) == 0:
+            cmd = "UPDATE subscriptions SET parameter = '%s' WHERE id = %d AND parameter IS NULL" % (Parameter, peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
 
-        msg = 'Вы успешно зарегистрированы!'
-        self.SendMessage(peerid, msg, 3)
-        print(lastRegData)
-        isFirstTime = self.InsertIntoPlate(lastRegData[0], lastRegData[1], Parameter)
-        self.onetimeschedule(peerid, lastRegData[0], lastRegData[1], Parameter, first_time=isFirstTime)
+            cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
+
+            msg = 'Вы успешно зарегистрированы!'
+            self.SendMessage(peerid, msg, 3)
+            print(lastRegData)
+            # 0 - площадка
+            isFirstTime = self.InsertIntoPlate(lastRegData[0], lastRegData[1], Parameter)
+            self.onetimeschedule(peerid, lastRegData[0], lastRegData[1], Parameter, first_time=isFirstTime)
+
+        else:
+            self.SendMessage(peerid, "Вы уже подписаны на этого преподавателя/группу", 3)
+            self.onetimeschedule(peerid, lastRegData[0], lastRegData[1], Parameter)
+            self.DeleteUser(peerid, Parameter)
 
 
     def OnetimeSetPlate(self, peerid, plate):
@@ -287,15 +303,21 @@ class Messg:
         self.c.execute(cmd)
         self.conn.commit()
 
-
     def DeleteUser(self, peerid, parameter):
-        cmd = "SELECT plate, class FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
+        if "Площадка 1" in parameter:
+            plate = 1
+        elif "Площадка 2" in parameter:
+            plate = 2
+
+        parameter = parameter.replace(" (Площадка 1)", "")
+        parameter = parameter.replace(" (Площадка 2)", "")
+        cmd = "SELECT plate, class FROM subscriptions WHERE id = %d AND parameter = '%s' AND plate = %d" % (peerid, parameter, plate)
         self.c.execute(cmd)
         result = self.c.fetchone()
         if result is not None:
             self.DeleteFromPlate(result[0], result[1], parameter)
-
-            cmd = "DELETE FROM subscriptions WHERE id = %d AND parameter = '%s'" % (peerid, parameter)
+            print(result[0])
+            cmd = "DELETE FROM subscriptions WHERE id = %d AND parameter = '%s' AND plate = %s" % (peerid, parameter, result[0])
             self.c.execute(cmd)
             self.conn.commit()
             self.SendMessage(peerid, "Профиль " + str(parameter) + " успешно удален", 3)
@@ -309,7 +331,7 @@ class Messg:
 
 
     def generateJSONToDelete(self, peerid):
-        self.c.execute('SELECT parameter FROM subscriptions WHERE id=%d' % peerid)
+        self.c.execute('SELECT parameter, plate FROM subscriptions WHERE id=%d' % peerid)
         matching = self.c.fetchall()
         data = {}
         data['one_time'] = True
@@ -318,7 +340,7 @@ class Messg:
             data['buttons'].append([{
                 "action": {
                     "type": "text",
-                    "label": param[0]
+                    "label": param[0] + " (Площадка " + str(param[1]) + ")"
                 },
                 "color": "positive"
 
@@ -363,12 +385,15 @@ class Messg:
         request_from_google.session_id = 'BatlabAIBot'  # ID Сессии диалога (нужно, чтобы потом учить бота)
         request_from_google.query = message  # Посылаем запрос к ИИ с сообщением от юзера
         response_json = json.loads(request_from_google.getresponse().read().decode('utf-8'))
-        response = response_json['result']['fulfillment']['speech']
+        try:
+            response = response_json['result']['fulfillment']['speech']
 
-        if response:
-            self.SendMessage(peerid, response, 3)
-        else:
-            self.SendMessage(peerid, "Я вас не понял", 3)
+            if response:
+                self.SendMessage(peerid, response, 3)
+            else:
+                self.SendMessage(peerid, "Я вас не понял", 3)
+        except:
+            pass
 
 
     def InsertIntoPlate(self, plate, Class, parameter):
@@ -454,6 +479,11 @@ class Messg:
             self.c.execute(cmd)
             self.conn.commit()
 
+    def SetUserStatus(self, peerid, status):
+        cmd = "UPDATE users SET status = '%s' WHERE id = %d" % (status, peerid)
+        self.c.execute(cmd)
+        self.conn.commit()
+
 messg = None
 
 
@@ -480,16 +510,26 @@ def ReturnAnswer():
                 # LogManager.AddLog(time + '  ' + name + '(' + str(peer_id) + '): ' + msg)
                 messg.checkMessage(msg, peer_id)
             else:
-                if '[club170013824|@nrtkbotvk] ' in msg:
-                    msg = msg.replace('[club170013824|@nrtkbotvk] ', '')
-                elif '[club170013824|расписание нртк] ' in msg:
-                    msg = msg.replace('[club170013824|расписание нртк] ', '')
+                if '[club178183356|@club178183356] ' in msg:
+                    msg = msg.replace('[club178183356|@club178183356] ', '')
+                elif '[club178183356|Тест бота расписания] ' in msg:
+                    msg = msg.replace('[club178183356|Тест бота расписания] ', '')
                 messg.checkMessage(msg, peer_id)
                 # LogManager.AddLog(time + '  ' + 'Беседа' + '(' + str(peer_id) + '): ' + msg)
         elif type == 'group_leave':
             peer_id = object['user_id']
+            messg.SetUserStatus(peer_id, 'left')
             messg.SendMessage(peer_id, "Вы отписались от бота, ваш профиль полностью удален", 3)
-            messg.DeleteAllFinaly(peer_id)
+            try:
+                messg.DeleteAllFinaly(peer_id)
+            except:
+                return 'ok'
+
+        elif type == 'group_join':
+            peer_id = object['user_id']
+            messg.SetUserStatus(peer_id, '')
+            messg.SendMessage(peer_id, "Добро пожаловать назад!", 3)
+
         elif type == 'message_deny':
             peer_id = object['user_id']
             messg.DeleteAllFinaly(peer_id)

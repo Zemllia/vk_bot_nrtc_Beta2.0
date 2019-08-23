@@ -55,7 +55,7 @@ class Messg:
             cmd = "SELECT parameter FROM subscriptions WHERE id=%d" % peerid
             self.c.execute(cmd)
             result = self.c.fetchall()
-            if(len(result) < 10):
+            if len(result) < 9:
                 if self.GetUserState(peerid) == "":
                     msg = "Вы уже проходите регистрацию"
                     state = self.GetUserState(peerid)

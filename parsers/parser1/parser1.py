@@ -144,7 +144,7 @@ class Parser:
     def pending_update(self):
         while True:
             try:
-                cookies = {'beget': 'begetok; expires=' + str(datetime.datetime.now())}
+                cookies = {'beget': 'begetok; expires=2035-08-24 15:26:54.364773'}
 
                 html = requests.get('https://nntc.nnov.ru/sites/default/files/sched/zameny.html',
                                     cookies=cookies).content

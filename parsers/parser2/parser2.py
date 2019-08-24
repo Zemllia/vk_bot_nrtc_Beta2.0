@@ -77,7 +77,9 @@ class Parser:
     def pending_update(self):
         while True:
             try:
-                html = requests.get('https://nntc.nnov.ru/sites/default/files/sched/schedule_2.html').content
+                cookies = {'beget': 'begetok; expires=' + str(datetime.datetime.now())}
+
+                html = requests.get('https://nntc.nnov.ru/sites/default/files/sched/schedule_2.html', cookies=cookies).content
                 html = str(html, 'windows-1251')
 
                 if self.date != datetime.date.today() and self.html != '':

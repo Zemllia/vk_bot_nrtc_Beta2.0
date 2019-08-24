@@ -144,7 +144,10 @@ class Parser:
     def pending_update(self):
         while True:
             try:
-                html = requests.get('https://nntc.nnov.ru/sites/default/files/sched/zameny.html').content
+                cookies = {'beget': 'begetok; expires=' + str(datetime.datetime.now())}
+
+                html = requests.get('https://nntc.nnov.ru/sites/default/files/sched/zameny.html',
+                                    cookies=cookies).content
                 html = self.date_replacement(html)
 
                 if self.date != datetime.date.today() and self.html != '':

@@ -146,9 +146,17 @@ class Parser:
             try:
                 cookies = {'beget': 'begetok; expires=2035-08-24 15:26:54.364773'}
 
-                html = requests.get('https://nntc.nnov.ru/sites/default/files/sched/zameny.html',
-                                    cookies=cookies).content
-                html = self.date_replacement(html)
+                answer = requests.get('https://nntc.nnov.ru/sites/default/files/sched/zameny.html',
+                                    cookies=cookies)
+
+                if answer.status_code != 200:
+                    if self.html == '':
+                        with open("site.html", "r", encoding="utf8") as f:
+                            html = f.read()
+                            break
+                    continue
+
+                html = self.date_replacement(answer.content)
 
                 if self.date != datetime.date.today() and self.html != '':
                     html = self.html
@@ -164,9 +172,9 @@ class Parser:
 
                     with open("site.html", "r", encoding="utf8") as f:
                         html = f.read()
-                    break
-
+                        break
                 continue
+
             time.sleep(1)
 
         return html

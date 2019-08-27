@@ -29,6 +29,11 @@ class Parser:
             password=config.password
         )
 
+        way = 'parsers/parser2/site.html'
+        if __name__ == '__main__': way = "site.html"
+
+        self.save_file = way
+
         self.html = ''
         self.date = 0
         self.archive = {}
@@ -84,7 +89,7 @@ class Parser:
 
                 if answer.status_code != 200:
                     if self.html == '':
-                        with open("site.html", "r", encoding="utf8") as f:
+                        with open(self.save_file, "r", encoding="utf8") as f:
                             html = f.read()
                             break
                     continue
@@ -96,13 +101,13 @@ class Parser:
                     break
 
                 if str(html) != self.html and '</html>' in str(html):
-                    with open("site.html", "w", encoding="utf8") as f:
+                    with open(self.save_file, "w", encoding="utf8") as f:
                         f.write(html)
                     break
 
             except:
                 if self.html == '':
-                    with open("site.html", "r", encoding="utf8") as f:
+                    with open(self.save_file, "r", encoding="utf8") as f:
                         html = f.read()
                         break
                 continue

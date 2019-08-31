@@ -134,14 +134,13 @@ class Parser:
 
             elif 'Замена в расписании' in trs[line_number].text:
 
-                # >=
-                if self.date_conversion(trs[table_upper_bound].text) != datetime.date.today():
+                if self.date_conversion(trs[table_upper_bound].text) >= datetime.date.today():
                     tables.append(trs[table_upper_bound:line_number])
                     self.archive[self.date_conversion(trs[table_upper_bound].text)] = {'student': {}, 'teacher': {}}
                 table_upper_bound = line_number
         else:
-            # >=
-            if self.date_conversion(trs[table_upper_bound].text) != datetime.date.today():
+
+            if self.date_conversion(trs[table_upper_bound].text) >= datetime.date.today():
                 tables.append(trs[table_upper_bound:line_number])
                 self.archive[self.date_conversion(trs[table_upper_bound].text)] = {'student': {}, 'teacher': {}}
 

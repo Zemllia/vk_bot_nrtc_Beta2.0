@@ -95,8 +95,8 @@ class Parser:
 
             # Вывод результата
             date = self.date_conversion(table[1].text)
-            # >=
-            if date != datetime.date.today():
+
+            if date >= datetime.date.today():
                 tables.append(table)
                 dates.append(date)
                 self.archive[date] = {'student':{}, 'teacher':{}}

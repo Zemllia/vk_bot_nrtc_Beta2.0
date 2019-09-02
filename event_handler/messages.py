@@ -510,12 +510,13 @@ def ReturnAnswer():
                 # LogManager.AddLog(time + '  ' + name + '(' + str(peer_id) + '): ' + msg)
                 messg.checkMessage(msg, peer_id)
             else:
-                if '[club178183356|@club178183356] ' in msg:
-                    msg = msg.replace('[club178183356|@club178183356] ', '')
-                elif '[club178183356|Тест бота расписания] ' in msg:
-                    msg = msg.replace('[club178183356|Тест бота расписания] ', '')
+                msg = msg.replace('[club170013824|@nrtkbotvk], ', '')
+                msg = msg.replace('[club170013824|@nrtkbotvk] ', '')
+                msg = msg.replace('[club170013824|*nrtkbotvk] ', '')
+                msg = msg.replace('[club170013824|Расписание НРТК] ', '')
+
                 messg.checkMessage(msg, peer_id)
-                # LogManager.AddLog(time + '  ' + 'Беседа' + '(' + str(peer_id) + '): ' + msg)
+
         elif type == 'group_leave':
             peer_id = object['user_id']
             messg.SetUserStatus(peer_id, 'left')
@@ -527,8 +528,12 @@ def ReturnAnswer():
 
         elif type == 'group_join':
             peer_id = object['user_id']
-            messg.SetUserStatus(peer_id, '')
-            messg.SendMessage(peer_id, "Добро пожаловать назад!", 3)
+            try:
+                if messg.GetUserState(peer_id) == 'left':
+                    messg.SetUserStatus(peer_id, '')
+                    messg.SendMessage(peer_id, "Добро пожаловать назад!", 3)
+            except:
+                pass
 
         elif type == 'message_deny':
             peer_id = object['user_id']

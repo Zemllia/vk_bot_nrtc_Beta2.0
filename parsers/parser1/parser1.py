@@ -28,6 +28,11 @@ class Parser:
                                     user=config.user,
                                     password=config.password)
 
+        way = 'parsers/parser1/site.html'
+        if __name__ == '__main__': way = "site.html"
+
+        self.save_file = way
+
         self.html = ''
         self.date = 0
         self.archive = {}
@@ -90,8 +95,8 @@ class Parser:
 
             # Вывод результата
             date = self.date_conversion(table[1].text)
-            # >=
-            if date != datetime.date.today():
+
+            if date >= datetime.date.today():
                 tables.append(table)
                 dates.append(date)
                 self.archive[date] = {'student':{}, 'teacher':{}}
@@ -144,26 +149,38 @@ class Parser:
     def pending_update(self):
         while True:
             try:
-                html = requests.get('https://nntc.nnov.ru/sites/default/files/sched/zameny.html').content
-                html = self.date_replacement(html)
+                cookies = {'beget': 'begetok; expires=2035-08-24 15:26:54.364773'}
+
+                answer = requests.get('https://nntc.nnov.ru/sites/default/files/sched/zameny.html',
+                                    cookies=cookies)
+
+                if answer.status_code != 200:
+                    if self.html == '':
+
+                        with open(self.save_file, "r", encoding="utf8") as f:
+                            html = f.read()
+                            break
+                    continue
+
+                html = self.date_replacement(answer.content)
 
                 if self.date != datetime.date.today() and self.html != '':
                     html = self.html
                     break
 
                 if str(html) != self.html and '</html>' in str(html):
-                    with open("site.html", "w", encoding="utf8") as f:
+                    with open(self.save_file, "w", encoding="utf8") as f:
                         f.write(html)
                     break
 
             except:
                 if self.html == '':
 
-                    with open("site.html", "r", encoding="utf8") as f:
+                    with open(self.save_file, "r", encoding="utf8") as f:
                         html = f.read()
-                    break
-
+                        break
                 continue
+
             time.sleep(1)
 
         return html

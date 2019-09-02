@@ -60,22 +60,19 @@ class Parser:
 
         self.cap = """
                 <tr bgcolor="#A9A9A9">
-                    <td><div align="center"><font size="3">Группа</font></div></td>
-                    <td><div align="center"><font size="3">1 пара</font></div></td>
-                    <td><div align="center"><font size="3">каб.№</font></div></td>
-                    <td><div align="center"><font size="3">2 пара</font></div></td>
-                    <td><div align="center"><font size="3">каб.№</font></div></td>
-                    <td><div align="center"><font size="3">3 пара</font></div></td>
-                    <td><div align="center"><font size="3">каб.№</font></div></td>
-                    <td><div align="center"><font size="3">4 пара</font></div></td>
-                    <td><div align="center"><font size="3">каб.№</font></div></td>
-                    <td><div align="center"><font size="3">5 пара</font></div></td>
-                    <td><div align="center"><font size="3">каб.№</font></div></td>
-                    <td><div align="center"><font size="3">6 пара</font></div></td>
-                    <td><div align="center"><font size="3">каб.№</font></div></td>
-                    <td><div align="center"><font size="3">7 пара</font></div></td>
-                    <td><div align="center"><font size="3">каб.№</font></div></td>
-                    <td><div align="center"><font size="3">-</font></div></td>
+                    <td><div align="center"><font size="5">Группа</font></div></td>
+                    <td><div align="center"><font size="5">1 пара</font></div></td>
+                    <td><div align="center"><font size="4">каб.№</font></div></td>
+                    <td><div align="center"><font size="5">2 пара</font></div></td>
+                    <td><div align="center"><font size="4">каб.№</font></div></td>
+                    <td><div align="center"><font size="5">3 пара</font></div></td>
+                    <td><div align="center"><font size="4">каб.№</font></div></td>
+                    <td><div align="center"><font size="5">4 пара</font></div></td>
+                    <td><div align="center"><font size="4">каб.№</font></div></td>
+                    <td><div align="center"><font size="5">5 пара</font></div></td>
+                    <td><div align="center"><font size="4">каб.№</font></div></td>
+                    <td><div align="center"><font size="5">6 пара</font></div></td>
+                    <td><div align="center"><font size="4">каб.№</font></div></td>
                 </tr>
                 """
 
@@ -200,7 +197,7 @@ class Parser:
         result += '<table border="1" cellpadding="2" width="1500">'
         result += str(self.colgroup)
 
-        result +=  '<tbody>'
+        result += '<tbody>'
         result += """
         <tr bgcolor="#A9A9A9">
             <td colspan="16"><div align="center"><font size="6">%s</font></div></td>
@@ -212,9 +209,9 @@ class Parser:
             if averaged_parameter in self.averaged_parameter('student', line.findAll('td')[0].text):
                 line = line.findAll('td')
                 result += '<tr>'
-                result += '<td bgcolor="#B3B3B3">%s</td>' % line[0].text
+                result += '<td bgcolor="#B3B3B3"><font size=5>%s</font></td>' % line[0].text
                 for i in line[1:]:
-                    result += str(i)
+                    result += str(i).replace('>'+i.text+'<', '><font size=4>%s</font><' % i.text)
 
                 result += '</tr>' + '</table>'
                 break
@@ -246,12 +243,13 @@ class Parser:
             if averaged_parameter in self.averaged_parameter('teacher', line.text):
                 line = line.findAll('td')
                 result += '<tr>'
-                result += '<td bgcolor="#B3B3B3">%s</td>' % line[0].text
+                result += '<td bgcolor="#B3B3B3"><font size=5>%s</font></td>' % line[0].text
                 for i in line[1:]:
                     if averaged_parameter in self.averaged_parameter('teacher', i.text):
-                        result += str(i).replace('<td', '<td bgcolor="#EEE8AA"')
+                        result += str(i).replace('>'+i.text+'<', '><font size=4>%s</font><' % i.text).replace('<td', '<td bgcolor="#EEE8AA"')
+
                     else:
-                        result += str(i)
+                        result += str(i).replace('>'+i.text+'<', '><font size=4>%s</font><' % i.text)
 
                 result += '</tr>'
                 switch = False
@@ -342,9 +340,9 @@ class Parser:
         auto_mailing.start()
 
 
-import message_sender
-
 if __name__ == '__main__':
+    import message_sender
+
     Sender = message_sender.Sender()
     Sender.start()
 
@@ -354,7 +352,7 @@ if __name__ == '__main__':
     time.sleep(10)
 
     user_id = 265868386
-    class_ = 'student'
-    parameter = '1ТМ-18-1'
+    class_ = 'teacher'
+    parameter = 'Кочурин С.С'
 
     Parser1.single(user_id, class_, parameter, first_time=True)

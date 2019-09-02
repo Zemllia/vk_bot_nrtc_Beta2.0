@@ -1,13 +1,6 @@
 {
   "one_time": true,
   "buttons": [
-    [{
-      "action": {
-        "type": "text",
-        "label": "Регистрация"
-      },
-      "color": "positive"
-    }],
       [{
         "action": {
           "type": "text",

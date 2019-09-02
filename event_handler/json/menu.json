@@ -7,8 +7,8 @@
         "label": "Расписание"
       },
       "color": "positive"
-    }],
-    [{
+    },
+    {
       "action": {
         "type": "text",
         "label": "Расписание на"
@@ -18,9 +18,17 @@
       [{
         "action": {
           "type": "text",
+          "label": "Регистрация"
+        },
+        "color": "primary"
+      },
+        {
+        "action": {
+          "type": "text",
           "label": "Команды"
         },
-        "color": "positive"
-      }]
+        "color": "primary"
+      }
+      ]
   ]
 }

@@ -529,10 +529,11 @@ def ReturnAnswer():
         elif type == 'group_join':
             peer_id = object['user_id']
             try:
-                if messg.GetUserState(peer_id) == 'left':
+                if messg.GetUserState(peer_id)[0] == 'left':
                     messg.SetUserStatus(peer_id, '')
                     messg.SendMessage(peer_id, "Добро пожаловать назад!", 3)
             except:
+                print(123)
                 pass
 
         elif type == 'message_deny':

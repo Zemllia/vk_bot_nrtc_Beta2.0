@@ -325,7 +325,7 @@ class Parser:
 
         try:
             # Проверка наличия в памяти
-            picture, html = self.archive[date][class_][parameter]
+            picture, text = self.archive[date][class_][parameter]
 
         except:
             # Составление HTML и запись в память
@@ -338,9 +338,11 @@ class Parser:
 
             picture = imgkit.from_string(html, False)
             picture = functions.photo_upload(picture)
-            self.archive[date][class_][parameter] = [picture, html]
+            text = BeautifulSoup(html, 'html.parser').find('table').text.replace('\n', '')
 
-        return picture, html
+            self.archive[date][class_][parameter] = [picture, text]
+
+        return picture, text
 
     # Одиноный запрос расписания
     def single(self, user_id, class_, parameter, first_time):
@@ -351,7 +353,8 @@ class Parser:
             return
 
         for table in self.tables:
-            picture, html = self.create_or_query(table, class_, parameter)
+            picture, text = self.create_or_query(table, class_, parameter)
+            print(text)
             self.Sender(user_id, attachment=picture)
 
             if first_time:
@@ -359,7 +362,7 @@ class Parser:
 
                 c.execute(
                     "UPDATE subscriptions_info_1 SET {0} = '{1}' WHERE (class='{2}' and parameter='{3}'and subscription_count=1)".format(
-                    'a' + str(self.date_conversion(table[1].text)).replace("-", ""), html,
+                    'a' + str(self.date_conversion(table[1].text)).replace("-", ""), text,
                     class_, parameter))
                 self.conn.commit()
 
@@ -377,9 +380,9 @@ class Parser:
                 for line in c.fetchall():
                     def flow(table, line):
                         c = self.conn.cursor()
-                        picture, html = self.create_or_query(table, line[0], line[1])
+                        picture, text = self.create_or_query(table, line[0], line[1])
 
-                        if line[2] != html:
+                        if line[2] != text:
                             c.execute(
                                 "SELECT * FROM subscriptions WHERE (plate=1 and class='{}' and parameter='{}')".format(
                                     line[0], line[1]))
@@ -388,7 +391,7 @@ class Parser:
                                 self.Sender(user[0], attachment=picture)
 
                             c.execute("UPDATE subscriptions_info_1 SET {} = '{}' WHERE (class='{}' and parameter='{}')".format(
-                                'a'+str(self.date_conversion(table[1].text)).replace("-", ""), html,
+                                'a'+str(self.date_conversion(table[1].text)).replace("-", ""), text,
                                 line[0], line[1]))
                             self.conn.commit()
 
@@ -399,9 +402,9 @@ class Parser:
         auto_mailing.start()
 
 
-import message_sender
-
 if __name__ == '__main__':
+    import message_sender
+
     Sender = message_sender.Sender()
     Sender.start()
 
@@ -410,7 +413,7 @@ if __name__ == '__main__':
 
     user_id = 265868386
     class_ = 'student'
-    parameter = '3ПКС-16-2'
+    parameter = '3ПКС-17-1к'
 
     time.sleep(10)
 

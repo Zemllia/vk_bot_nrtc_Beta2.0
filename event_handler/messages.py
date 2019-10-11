@@ -308,6 +308,8 @@ class Messg:
             plate = 1
         elif "Площадка 2" in parameter:
             plate = 2
+        else:
+            plate = 1
 
         parameter = parameter.replace(" (Площадка 1)", "")
         parameter = parameter.replace(" (Площадка 2)", "")

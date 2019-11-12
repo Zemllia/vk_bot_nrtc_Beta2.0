@@ -33,7 +33,7 @@ class Messg:
         self.c = self.conn.cursor()
         self.keyBoardList = ["event_handler/json/cancel.json", "event_handler/json/commands.json",
                              "event_handler/json/isTeacher.json", "event_handler/json/menu.json",
-                             "event_handler/json/plate.json"]
+                             "event_handler/json/plate.json", "event_handler/json/hide_keyboard.json"]
         self.onetimeschedule = onetimeschedulefunc
 
     Random = 0
@@ -106,7 +106,6 @@ class Messg:
             self.c.execute(cmd)
             self.conn.commit()
 
-
         elif msgeLower == "команды":
             msg = 'Меню команд'
             self.SendMessage(peerid, msg, 1)
@@ -114,6 +113,13 @@ class Messg:
         elif msgeLower == "назад":
             msg = 'Главное меню'
             self.SendMessage(peerid, msg, 3)
+
+        elif msgeLower == "убрать клавиатуру":
+            msg = 'Вы уверены?'
+            self.SendMessage(peerid, msg, 5)
+            cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('hide_ask', peerid)
+            self.c.execute(cmd)
+            self.conn.commit()
 
         elif msgeLower == "отмена":
             userState = self.GetUserState(peerid)
@@ -139,6 +145,15 @@ class Messg:
                 self.OnetimeSetClass(peerid, msgeLower)
             elif state == 'onetime_setparameter':
                 self.OnetimeSetParameter(peerid, msge)
+            elif state == 'hide_ask':
+                if msgeLower == "да":
+                    self.SendMessage(peerid, "Клавиатура убрана, теперь она не будет вам мешать, чтобы включить"
+                                             "ее назад, просто напишите боту что либо")
+                    cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
+                    self.c.execute(cmd)
+                    self.conn.commit()
+                else:
+                    self.SendMessage(peerid, "Отмена отключения клавиатуры...", 3)
             else:
                 self.TalkWithBot(peerid, msge)
 
@@ -371,15 +386,13 @@ class Messg:
             self.c.execute(cmd)
             self.conn.commit()
 
-
-    def SendMessage(self, peerid, mesg, keyboard):
+    def SendMessage(self, peerid, mesg, keyboard=None):
         self.vk.messages.send(
             peer_id=peerid,
             message=mesg,
             keyboard=open(self.keyBoardList[keyboard], "r", encoding="UTF-8").read(),
             random_id=self.random_id()
         )
-
 
     def TalkWithBot(self, peerid, message):
         request_from_google = apiai.ApiAI('2ec1776470d340a5a793ff5afa92b63b').text_request()  # Токен API к Dialogflow
@@ -396,7 +409,6 @@ class Messg:
                 self.SendMessage(peerid, "Я вас не понял", 3)
         except:
             pass
-
 
     def InsertIntoPlate(self, plate, Class, parameter):
         cmd = "SELECT subscription_count FROM subscriptions_info_%d WHERE parameter = '%s' AND class = '%s'" % (

@@ -2,12 +2,12 @@
 # ---------------------Token VK API и Group id--------------------- #
 
 # Расписание НРТК
-# vk_token = "9331b5500f6de8f6b09e83b13f89e5a38b432b69a6e7615e9d76a9d2eec1e50d74d8f90d5b571c2afa582"
-# group_id = "170013824"
+vk_token = "9331b5500f6de8f6b09e83b13f89e5a38b432b69a6e7615e9d76a9d2eec1e50d74d8f90d5b571c2afa582"
+group_id = "170013824"
 
 # Тест бота расписания
-vk_token = "1c5b8dc15da393fb051d0b85679373b62ed9cf7ec5df7d2557022cdfcb970f8c1fc40a116c1efdfc9e8bf"
-group_id = "178183356"
+# vk_token = "1c5b8dc15da393fb051d0b85679373b62ed9cf7ec5df7d2557022cdfcb970f8c1fc40a116c1efdfc9e8bf"
+# group_id = "178183356"
 callbackapi_secret_key = "0UgMZ9oqhn0QGqbAkuKj6NLpIl4Wgc"
 
 

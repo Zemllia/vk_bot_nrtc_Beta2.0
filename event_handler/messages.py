@@ -149,11 +149,12 @@ class Messg:
                 if msgeLower == "да":
                     self.SendMessage(peerid, "Клавиатура убрана, теперь она не будет вам мешать, чтобы включить"
                                              "ее назад, просто напишите боту что либо")
-                    cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
-                    self.c.execute(cmd)
-                    self.conn.commit()
                 else:
                     self.SendMessage(peerid, "Отмена отключения клавиатуры...", 3)
+                    
+                cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
+                self.c.execute(cmd)
+                self.conn.commit()
             else:
                 self.TalkWithBot(peerid, msge)
 

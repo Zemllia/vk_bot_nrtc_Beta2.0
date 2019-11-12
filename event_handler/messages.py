@@ -151,7 +151,7 @@ class Messg:
                                              "ее назад, просто напишите боту что либо")
                 else:
                     self.SendMessage(peerid, "Отмена отключения клавиатуры...", 3)
-                    
+
                 cmd = "UPDATE users SET status = '%s' WHERE id = %d" % ('', peerid)
                 self.c.execute(cmd)
                 self.conn.commit()

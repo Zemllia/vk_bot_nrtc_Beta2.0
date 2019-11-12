@@ -8,6 +8,13 @@
         },
         "color": "positive"
       }],
+      [{
+        "action": {
+          "type": "text",
+          "label": "Убрать клавиатуру"
+        },
+        "color": "positive"
+      }],
 	  [{
         "action": {
           "type": "text",

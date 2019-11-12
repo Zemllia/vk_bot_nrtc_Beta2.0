@@ -387,12 +387,19 @@ class Messg:
             self.conn.commit()
 
     def SendMessage(self, peerid, mesg, keyboard=None):
-        self.vk.messages.send(
-            peer_id=peerid,
-            message=mesg,
-            keyboard=open(self.keyBoardList[keyboard], "r", encoding="UTF-8").read(),
-            random_id=self.random_id()
-        )
+        if keyboard is not None:
+            self.vk.messages.send(
+                peer_id=peerid,
+                message=mesg,
+                keyboard=open(self.keyBoardList[keyboard], "r", encoding="UTF-8").read(),
+                random_id=self.random_id()
+            )
+        else:
+            self.vk.messages.send(
+                peer_id=peerid,
+                message=mesg,
+                random_id=self.random_id()
+            )
 
     def TalkWithBot(self, peerid, message):
         request_from_google = apiai.ApiAI('2ec1776470d340a5a793ff5afa92b63b').text_request()  # Токен API к Dialogflow

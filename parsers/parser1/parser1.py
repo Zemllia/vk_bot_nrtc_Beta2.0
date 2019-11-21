@@ -219,11 +219,11 @@ class Parser:
 
         for i in range(len(trs)):
             if averaged_parameter in self.averaged_parameter('student', trs[i].text) and not switch and trs[i].findAll(
-                    'td', attrs=self.signs_boundaries):
+                    'td', attrs=self.signs_boundaries) == 5:
                 result += str(trs[i])
                 switch = True
 
-            elif not len(trs[i].findAll("td", self.signs_boundaries)) == 0 and switch:
+            elif len(trs[i].findAll("td", self.signs_boundaries)) == 5 and switch:
                 break
 
             elif switch:
@@ -259,7 +259,7 @@ class Parser:
         tr = table[3:]
 
         while i < len(tr):
-            if not len(tr[i].findAll("td", self.signs_boundaries)) == 0:
+            if len(tr[i].findAll("td", self.signs_boundaries)) == 5:
                 upper_bound = i
 
             elif averaged_parameter in self.averaged_parameter('teacher', tr[i].text):
@@ -273,11 +273,11 @@ class Parser:
                 switch = False
                 item = ''
                 while i < len(tr):
-                    if not len(tr[i].findAll("td", self.signs_boundaries)) == 0 and not switch:
+                    if len(tr[i].findAll("td", self.signs_boundaries)) == 5 and not switch:
                         item += str(tr[i])
                         switch = True
 
-                    elif not len(tr[i].findAll("td", self.signs_boundaries)) == 0 and switch:
+                    elif len(tr[i].findAll("td", self.signs_boundaries)) == 5 and switch:
                         items[0].append(number)
                         items[1].append(item)
                         upper_bound = i

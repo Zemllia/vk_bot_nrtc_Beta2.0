@@ -12,8 +12,9 @@ Sender.start()
 Parser1 = parser1.Parser(Sender.add)
 Parser1.start()
 
-Parser2 = parser2.Parser(Sender.add)
-Parser2.start()
+
+# Parser2 = parser2.Parser(Sender.add)
+# Parser2.start()
 
 
 def one_time_schedule(user_id, plate, class_, parameter, first_time=False):
@@ -21,7 +22,8 @@ def one_time_schedule(user_id, plate, class_, parameter, first_time=False):
         Parser1.single(user_id, class_, parameter, first_time)
 
     elif plate == 2:
-        Parser2.single(user_id, class_, parameter, first_time)
+        pass
+        # Parser2.single(user_id, class_, parameter, first_time)
 
 
 messager = messages.Start(one_time_schedule)

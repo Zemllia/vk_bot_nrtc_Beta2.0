@@ -150,9 +150,13 @@ class Parser:
         while True:
             try:
                 cookies = {'beget': 'begetok; expires=2035-08-24 15:26:54.364773'}
+                proxies = {
+                    "http": "socks5://127.0.0.1:9050",
+                    "https": "socks5://127.0.0.1:9050",
+                }
 
                 answer = requests.get('https://nntc.nnov.ru/sites/default/files/sched/zameny.html',
-                                    cookies=cookies)
+                                    cookies=cookies, proxies=proxies)
 
                 if answer.status_code != 200:
                     if self.html == '':

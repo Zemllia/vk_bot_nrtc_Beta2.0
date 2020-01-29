@@ -185,7 +185,7 @@ class Parser:
                         break
                 continue
 
-            time.sleep(1)
+            time.sleep(5)
 
         return html
 
